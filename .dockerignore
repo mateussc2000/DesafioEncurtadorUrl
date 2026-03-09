@@ -1,0 +1,18 @@
+# Arquivos desnecessários para o container
+.git
+.gitignore
+README.md
+HELP.md
+*.md
+target/
+src/
+pom.xml
+mvnw
+mvnw.cmd
+.idea/
+.vscode/
+*.iml
+*.log
+data/
+node_modules/
+.DS_Store
