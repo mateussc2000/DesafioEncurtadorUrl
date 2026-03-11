@@ -1,7 +1,7 @@
 package com.encurtador_url.SuperApp.service;
 
-import com.encurtador_url.SuperApp.dto.ShortenUrlRequest;
-import com.encurtador_url.SuperApp.dto.ShortenUrlResponse;
+import com.encurtador_url.SuperApp.dto.request.ShortenUrlRequest;
+import com.encurtador_url.SuperApp.dto.response.ShortenUrlResponse;
 import com.encurtador_url.SuperApp.model.ShortenedUrl;
 import com.encurtador_url.SuperApp.repository.ShortenedUrlRepository;
 import org.junit.jupiter.api.BeforeEach;

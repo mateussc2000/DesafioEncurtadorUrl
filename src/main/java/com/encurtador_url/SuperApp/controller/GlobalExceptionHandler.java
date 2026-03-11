@@ -1,6 +1,6 @@
 package com.encurtador_url.SuperApp.controller;
 
-import com.encurtador_url.SuperApp.dto.ErrorResponse;
+import com.encurtador_url.SuperApp.dto.response.ErrorResponse;
 import com.encurtador_url.SuperApp.exception.InvalidUrlException;
 import com.encurtador_url.SuperApp.exception.UrlExpiredException;
 import lombok.extern.slf4j.Slf4j;

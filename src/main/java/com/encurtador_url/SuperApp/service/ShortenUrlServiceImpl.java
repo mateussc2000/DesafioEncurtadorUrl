@@ -1,18 +1,18 @@
 package com.encurtador_url.SuperApp.service;
 
-import com.encurtador_url.SuperApp.dto.ShortenUrlRequest;
-import com.encurtador_url.SuperApp.dto.ShortenUrlResponse;
+import com.encurtador_url.SuperApp.dto.request.ShortenUrlRequest;
+import com.encurtador_url.SuperApp.dto.response.ShortenUrlResponse;
 import com.encurtador_url.SuperApp.exception.InvalidUrlException;
 import com.encurtador_url.SuperApp.exception.UrlExpiredException;
 import com.encurtador_url.SuperApp.model.ShortenedUrl;
 import com.encurtador_url.SuperApp.repository.ShortenedUrlRepository;
 import com.encurtador_url.SuperApp.util.ShortCodeGenerator;
+import com.encurtador_url.SuperApp.mapper.ShortenUrlMapper;
 import com.encurtador_url.SuperApp.validations.UrlBusinessValidator;
 import com.encurtador_url.SuperApp.validations.UrlRequestValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,8 +37,8 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
     @Autowired
     private UrlBusinessValidator businessValidator;
 
-    @Value("${app.base-url:http://localhost:8080}")
-    private String baseUrl;
+    @Autowired
+    private ShortenUrlMapper mapper;
 
     private static final int MAX_RETRIES = 10;
 
@@ -72,7 +72,7 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
             // Retorna a URL existente
             Optional<ShortenedUrl> existing = repository.findByShortCode(existingCode);
             if (existing.isPresent()) {
-                return mapToResponse(existing.get());
+                return mapper.toResponse(existing.get());
             }
         }
 
@@ -100,7 +100,7 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
         ShortenedUrl saved = repository.save(shortenedUrl);
         log.info("URL encurtada criada: {} -> {} (alias: {})", originalUrl, shortCode, customAlias);
 
-        return mapToResponse(saved);
+        return mapper.toResponse(saved);
     }
 
     /**
@@ -112,7 +112,7 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
     @Transactional(readOnly = true)
     public Optional<ShortenUrlResponse> getShortenedUrl(String shortCode) {
         Optional<ShortenedUrl> url = repository.findByShortCode(shortCode);
-        return url.map(this::mapToResponse);
+        return url.map(mapper::toResponse);
     }
 
     /**
@@ -175,7 +175,7 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
     @Transactional(readOnly = true)
     public Optional<ShortenUrlResponse> getStats(String shortCode) {
         Optional<ShortenedUrl> url = repository.findByShortCode(shortCode);
-        return url.map(this::mapToResponse);
+        return url.map(mapper::toResponse);
     }
 
     /**
@@ -197,24 +197,4 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
         throw new RuntimeException("Não foi possível gerar um short code único após " + MAX_RETRIES + " tentativas");
     }
 
-    /**
-     * Mapeia ShortenedUrl para ShortenUrlResponse
-     *
-     * @param shortenedUrl entidade
-     * @return DTO com resposta
-     */
-    private ShortenUrlResponse mapToResponse(ShortenedUrl shortenedUrl) {
-        String shortUrl = baseUrl + "/" + shortenedUrl.getShortCode();
-
-        return new ShortenUrlResponse(
-            shortenedUrl.getShortCode(),
-            shortenedUrl.getCustomAlias(),
-            shortenedUrl.getOriginalUrl(),
-            shortUrl,
-            shortenedUrl.getCreatedAt(),
-            shortenedUrl.getExpirationDate(),
-            shortenedUrl.getClickCount(),
-            shortenedUrl.getLastAccessed()
-        );
-    }
 }

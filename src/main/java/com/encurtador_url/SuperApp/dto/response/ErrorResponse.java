@@ -1,4 +1,4 @@
-package com.encurtador_url.SuperApp.dto;
+package com.encurtador_url.SuperApp.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
@@ -13,4 +13,3 @@ public record ErrorResponse(
     String path,
     Long timestamp
 ) {}
-

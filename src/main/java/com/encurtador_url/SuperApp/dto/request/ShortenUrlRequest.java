@@ -1,4 +1,4 @@
-package com.encurtador_url.SuperApp.dto;
+package com.encurtador_url.SuperApp.dto.request;
 
 import lombok.*;
 import java.time.LocalDateTime;
