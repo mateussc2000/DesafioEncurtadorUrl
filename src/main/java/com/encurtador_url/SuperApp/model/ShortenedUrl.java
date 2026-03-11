@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "shortened_urls", indexes = {
     @Index(name = "idx_custom_alias", columnList = "custom_alias", unique = true),
-    @Index(name = "idx_created_at", columnList = "created_at")
+    @Index(name = "idx_created_at", columnList = "created_at"),
+    @Index(name = "idx_short_url", columnList = "short_url", unique = true)
 })
 @Data
 @NoArgsConstructor
@@ -21,6 +22,9 @@ public class ShortenedUrl {
     @Id
     @Column(name = "short_code", nullable = false, unique = true, length = 10)
     private String shortCode;
+
+    @Column(name = "short_url", nullable = false, unique = true, length = 100)
+    private String shortUrl;
 
     @Column(name = "original_url", nullable = false, length = 2048)
     private String originalUrl;

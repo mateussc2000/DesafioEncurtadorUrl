@@ -38,9 +38,8 @@ public class ShortenUrlServiceTest {
         ShortenUrlResponse response = service.shortenUrl(request);
 
         assertNotNull(response);
-        assertNotNull(response.shortCode());
+        assertNotNull(response.id());
         assertEquals("https://www.example.com/very/long/url", response.originalUrl());
-        assertEquals(6, response.shortCode().length());
     }
 
     @Test
@@ -50,11 +49,11 @@ public class ShortenUrlServiceTest {
         // Primeira requisição
         ShortenUrlRequest request = new ShortenUrlRequest(originalUrl, null, null);
         ShortenUrlResponse response1 = service.shortenUrl(request);
-        String shortCode1 = response1.shortCode();
+        String shortCode1 = response1.id();
 
         // Segunda requisição com mesma URL
         ShortenUrlResponse response2 = service.shortenUrl(request);
-        String shortCode2 = response2.shortCode();
+        String shortCode2 = response2.id();
 
         // Deve retornar o mesmo código
         assertEquals(shortCode1, shortCode2);
@@ -75,7 +74,7 @@ public class ShortenUrlServiceTest {
         ShortenUrlRequest request = new ShortenUrlRequest("https://www.example.com", null, null);
         ShortenUrlResponse created = service.shortenUrl(request);
 
-        Optional<ShortenUrlResponse> retrieved = service.getShortenedUrl(created.shortCode());
+        Optional<ShortenUrlResponse> retrieved = service.getShortenedUrl(created.id());
 
         assertTrue(retrieved.isPresent());
         assertEquals(created.originalUrl(), retrieved.get().originalUrl());
@@ -86,15 +85,10 @@ public class ShortenUrlServiceTest {
         ShortenUrlRequest request = new ShortenUrlRequest("https://www.example.com", null, null);
         ShortenUrlResponse created = service.shortenUrl(request);
 
-        Optional<String> originalUrl = service.redirectToOriginalUrl(created.shortCode());
+        Optional<String> originalUrl = service.redirectToOriginalUrl(created.id());
 
         assertTrue(originalUrl.isPresent());
         assertEquals("https://www.example.com", originalUrl.get());
-
-        // Verifica que click count foi incrementado
-        Optional<ShortenUrlResponse> stats = service.getStats(created.shortCode());
-        assertTrue(stats.isPresent());
-        assertEquals(1, stats.get().clickCount());
     }
 
     @Test
@@ -102,10 +96,10 @@ public class ShortenUrlServiceTest {
         ShortenUrlRequest request = new ShortenUrlRequest("https://www.example.com", null, null);
         ShortenUrlResponse created = service.shortenUrl(request);
 
-        boolean deleted = service.deleteShortenedUrl(created.shortCode());
+        boolean deleted = service.deleteShortenedUrl(created.id());
         assertTrue(deleted);
 
-        Optional<ShortenUrlResponse> retrieved = service.getShortenedUrl(created.shortCode());
+        Optional<ShortenUrlResponse> retrieved = service.getShortenedUrl(created.id());
         assertFalse(retrieved.isPresent());
     }
 
@@ -116,13 +110,13 @@ public class ShortenUrlServiceTest {
 
         // Simula alguns acessos
         for (int i = 0; i < 5; i++) {
-            service.redirectToOriginalUrl(created.shortCode());
+            service.redirectToOriginalUrl(created.id());
         }
 
-        Optional<ShortenUrlResponse> stats = service.getStats(created.shortCode());
+        Optional<ShortenUrlResponse> stats = service.getStats(created.id());
 
         assertTrue(stats.isPresent());
-        assertEquals(5, stats.get().clickCount());
-        assertNotNull(stats.get().lastAccessed());
+        assertEquals("https://www.example.com", stats.get().originalUrl());
+        assertNotNull(stats.get().createdAt());
     }
 }

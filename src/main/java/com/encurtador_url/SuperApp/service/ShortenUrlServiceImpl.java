@@ -1,6 +1,7 @@
 package com.encurtador_url.SuperApp.service;
 
 import com.encurtador_url.SuperApp.dto.request.ShortenUrlRequest;
+import com.encurtador_url.SuperApp.dto.response.ShortenUrlListResponse;
 import com.encurtador_url.SuperApp.dto.response.ShortenUrlResponse;
 import com.encurtador_url.SuperApp.exception.*;
 import com.encurtador_url.SuperApp.model.ShortenedUrl;
@@ -11,6 +12,9 @@ import com.encurtador_url.SuperApp.validations.UrlBusinessValidator;
 import com.encurtador_url.SuperApp.validations.UrlRequestValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +41,9 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
 
     @Autowired
     private ShortenUrlMapper mapper;
+
+    @Value("${app.shortener.base-url:http://localhost:8080}")
+    private String baseUrl;
 
     private static final int MAX_RETRIES = 10;
 
@@ -97,9 +104,13 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
             // Gera short code ou usa customAlias
             String shortCode = customAlias != null ? customAlias : generateUniqueShortCode();
 
+            // Gera a URL encurtada completa usando o basepath configurado
+            String shortUrl = baseUrl + "/" + shortCode;
+
             // Cria e salva a nova URL encurtada
             ShortenedUrl shortenedUrl = ShortenedUrl.builder()
                 .shortCode(shortCode)
+                .shortUrl(shortUrl)
                 .originalUrl(originalUrl)
                 .customAlias(customAlias)
                 .expirationDate(request.getExpirationDate())
@@ -293,6 +304,42 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
         throw new RuntimeException(
             "Não foi possível gerar um short code único após " + MAX_RETRIES + " tentativas"
         );
+    }
+
+    /**
+     * Lista todas as URLs encurtadas com paginação
+     *
+     * @param pageable configuração de paginação e ordenação
+     * @return ShortenUrlListResponse com a lista paginada e metadados
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public ShortenUrlListResponse listAll(Pageable pageable) {
+        log.debug("Listando URLs com paginação - page: {}, size: {}", pageable.getPageNumber(), pageable.getPageSize());
+
+        try {
+            Page<ShortenedUrl> page = repository.findAll(pageable);
+
+            var list = page.getContent()
+                    .stream()
+                    .map(mapper::toResponse)
+                    .toList();
+
+            log.info("URLs listadas: {} de {} total", list.size(), page.getTotalElements());
+
+            return new ShortenUrlListResponse(
+                    list,
+                    page.getNumber(),
+                    page.getSize(),
+                    page.getTotalElements(),
+                    page.getTotalPages(),
+                    page.isLast()
+            );
+
+        } catch (Exception ex) {
+            log.error("Erro ao listar URLs", ex);
+            throw new RuntimeException("Erro ao listar URLs", ex);
+        }
     }
 
 }
