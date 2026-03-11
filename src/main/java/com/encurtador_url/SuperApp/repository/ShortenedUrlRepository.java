@@ -11,7 +11,7 @@ import java.util.Optional;
  * Repository para operações de banco de dados em URLs encurtadas
  */
 @Repository
-public interface ShortenedUrlRepository extends JpaRepository<ShortenedUrl, Long> {
+public interface ShortenedUrlRepository extends JpaRepository<ShortenedUrl, String> {
 
     /**
      * Busca uma URL encurtada pelo seu short code

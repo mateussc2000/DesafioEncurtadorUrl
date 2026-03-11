@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ShortenUrlResponse(
-    Long id,
     String shortCode,
     String customAlias,
     String originalUrl,

@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "shortened_urls", indexes = {
-    @Index(name = "idx_short_code", columnList = "short_code", unique = true),
     @Index(name = "idx_custom_alias", columnList = "custom_alias", unique = true),
     @Index(name = "idx_created_at", columnList = "created_at")
 })
@@ -20,9 +19,6 @@ import java.time.LocalDateTime;
 public class ShortenedUrl {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
     @Column(name = "short_code", nullable = false, unique = true, length = 10)
     private String shortCode;
 
@@ -59,4 +55,3 @@ public class ShortenedUrl {
         updatedAt = LocalDateTime.now();
     }
 }
-

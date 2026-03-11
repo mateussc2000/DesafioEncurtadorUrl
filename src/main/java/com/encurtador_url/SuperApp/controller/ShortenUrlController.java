@@ -63,29 +63,6 @@ public class ShortenUrlController {
                       .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    /**
-     * Redireciona para a URL original
-     *
-     * @param shortCode código curto
-     * @return Redirecionamento para a URL original
-     */
-    @GetMapping("/redirect/{shortCode}")
-    @Operation(summary = "Redirecionar para URL original", description = "Redireciona para a URL original e registra o acesso")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "302", description = "Redirecionamento realizado"),
-        @ApiResponse(responseCode = "404", description = "URL não encontrada"),
-    })
-    public ResponseEntity<Void> redirect(@PathVariable String shortCode) {
-        Optional<String> originalUrl = service.redirectToOriginalUrl(shortCode);
-
-        if (originalUrl.isPresent()) {
-            return ResponseEntity.status(HttpStatus.FOUND)
-                                .header("Location", originalUrl.get())
-                                .build();
-        }
-
-        return ResponseEntity.notFound().build();
-    }
 
     /**
      * Obtém estatísticas de uma URL encurtada

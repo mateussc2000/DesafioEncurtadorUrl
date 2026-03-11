@@ -52,6 +52,7 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
      */
     @Override
     public ShortenUrlResponse shortenUrl(ShortenUrlRequest request) {
+        /*TODO: Verificar se é suficiente ou retornar todo objeto*/
         log.debug("Processando encurtamento de URL: {}", request.getOriginalUrl());
 
         // Validações conforme PDF
@@ -206,7 +207,6 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
         String shortUrl = baseUrl + "/" + shortenedUrl.getShortCode();
 
         return new ShortenUrlResponse(
-            shortenedUrl.getId(),
             shortenedUrl.getShortCode(),
             shortenedUrl.getCustomAlias(),
             shortenedUrl.getOriginalUrl(),
