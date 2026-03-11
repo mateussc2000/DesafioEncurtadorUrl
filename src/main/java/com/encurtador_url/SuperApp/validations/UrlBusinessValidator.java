@@ -1,6 +1,6 @@
 package com.encurtador_url.SuperApp.validations;
 
-import com.encurtador_url.SuperApp.exception.InvalidUrlException;
+import com.encurtador_url.SuperApp.exception.UrlInvalidaExceptionException;
 import com.encurtador_url.SuperApp.repository.ShortenedUrlRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,14 +19,14 @@ public class UrlBusinessValidator {
     /**
      * Valida se um alias customizado já existe no banco
      * @param customAlias alias a validar
-     * @throws InvalidUrlException se alias já existe
+     * @throws UrlInvalidaExceptionException se alias já existe
      */
     public void validateCustomAliasUniqueness(String customAlias) {
         log.debug("Validando unicidade do alias customizado: {}", customAlias);
 
         if (customAlias != null && !customAlias.isBlank()) {
             if (repository.existsByCustomAlias(customAlias.trim())) {
-                throw new InvalidUrlException("Alias customizado '" + customAlias + "' já existe");
+                throw new UrlInvalidaExceptionException("Alias customizado '" + customAlias + "' já existe");
             }
         }
 

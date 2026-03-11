@@ -36,7 +36,7 @@ public interface ShortenUrlMapper {
     DetailsUrlResponse toDetailsResponse(ShortenedUrl shortenedUrl);
 
     /**
-     * Método auxiliar para construir a URL encurtada completa
+     * Função auxiliar para construir a URL encurtada completa
      *
      * @param shortCode código curto
      * @return URL encurtada completa

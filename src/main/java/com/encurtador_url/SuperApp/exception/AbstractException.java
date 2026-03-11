@@ -1,5 +1,8 @@
 package com.encurtador_url.SuperApp.exception;
 
+import lombok.Getter;
+
+@Getter
 public class AbstractException extends RuntimeException {
 
     private String logcode;

@@ -2,15 +2,13 @@ package com.encurtador_url.SuperApp.service;
 
 import com.encurtador_url.SuperApp.dto.request.ShortenUrlRequest;
 import com.encurtador_url.SuperApp.dto.response.ShortenUrlResponse;
-import com.encurtador_url.SuperApp.exception.InvalidUrlException;
-import com.encurtador_url.SuperApp.exception.UrlExpiredException;
+import com.encurtador_url.SuperApp.exception.*;
 import com.encurtador_url.SuperApp.model.ShortenedUrl;
 import com.encurtador_url.SuperApp.repository.ShortenedUrlRepository;
 import com.encurtador_url.SuperApp.util.ShortCodeGenerator;
 import com.encurtador_url.SuperApp.mapper.ShortenUrlMapper;
 import com.encurtador_url.SuperApp.validations.UrlBusinessValidator;
 import com.encurtador_url.SuperApp.validations.UrlRequestValidator;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,10 +19,10 @@ import java.util.Optional;
 
 /**
  * Implementação do serviço para gerenciar URLs encurtadas
+ * Com tratamento robusto de exceções específicas
  */
 @Service
 @Slf4j
-@RequiredArgsConstructor
 @Transactional
 public class ShortenUrlServiceImpl implements ShortenUrlService {
 
@@ -48,59 +46,79 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
      *
      * @param request contém a URL original, alias opcional e expiração
      * @return DTO com informações da URL encurtada
-     * @throws InvalidUrlException se URL for inválida
+     * @throws UrlInvalidaExceptionException se URL for inválida
+     * @throws ValidationException se validações falharem
+     * @throws RepositoryException se houver erro ao acessar banco
+     * @throws MapperException se houver erro ao mapear
      */
     @Override
     public ShortenUrlResponse shortenUrl(ShortenUrlRequest request) {
-        /*TODO: Verificar se é suficiente ou retornar todo objeto*/
-        log.debug("Processando encurtamento de URL: {}", request.getOriginalUrl());
+        log.debug("Iniciando encurtamento de URL: {}", request.getOriginalUrl());
 
-        // Validações conforme PDF
-        requestValidator.validateOriginalUrl(request.getOriginalUrl());
-        if (request.getCustomAlias() != null && !request.getCustomAlias().isBlank()) {
-            requestValidator.validateCustomAlias(request.getCustomAlias());
-        }
-        if (request.getExpirationDate() != null) {
-            requestValidator.validateExpirationDate(request.getExpirationDate());
-        }
+        try {
+            // Validar URL original
+            requestValidator.validateOriginalUrl(request.getOriginalUrl());
+            log.debug("URL original validada com sucesso");
 
-        String originalUrl = request.getOriginalUrl().trim();
-
-        // Verifica se a URL já foi encurtada antes
-        String existingCode = businessValidator.checkExistingUrl(originalUrl);
-        if (existingCode != null) {
-            // Retorna a URL existente
-            Optional<ShortenedUrl> existing = repository.findByShortCode(existingCode);
-            if (existing.isPresent()) {
-                return mapper.toResponse(existing.get());
+            // Validar alias customizado se fornecido
+            if (request.getCustomAlias() != null && !request.getCustomAlias().isBlank()) {
+                requestValidator.validateCustomAlias(request.getCustomAlias());
+                log.debug("Alias customizado validado: {}", request.getCustomAlias());
             }
+
+            // Validar data de expiração se fornecida
+            if (request.getExpirationDate() != null) {
+                requestValidator.validateExpirationDate(request.getExpirationDate());
+                log.debug("Data de expiração validada: {}", request.getExpirationDate());
+            }
+
+            String originalUrl = request.getOriginalUrl().trim();
+
+            // Verifica se a URL já foi encurtada antes
+            String existingCode = businessValidator.checkExistingUrl(originalUrl);
+            if (existingCode != null) {
+                Optional<ShortenedUrl> existing = repository.findByShortCode(existingCode);
+                if (existing.isPresent()) {
+                    log.info("URL já existente encontrada: {} -> {}", originalUrl, existingCode);
+                    return mapper.toResponse(existing.get());
+                }
+            }
+
+            // Valida unicidade do alias customizado
+            String customAlias = request.getCustomAlias();
+            if (customAlias != null && !customAlias.isBlank()) {
+                customAlias = customAlias.trim();
+                businessValidator.validateCustomAliasUniqueness(customAlias);
+                log.debug("Unicidade do alias validada: {}", customAlias);
+            } else {
+                customAlias = null;
+            }
+
+            // Gera short code ou usa customAlias
+            String shortCode = customAlias != null ? customAlias : generateUniqueShortCode();
+
+            // Cria e salva a nova URL encurtada
+            ShortenedUrl shortenedUrl = ShortenedUrl.builder()
+                .shortCode(shortCode)
+                .originalUrl(originalUrl)
+                .customAlias(customAlias)
+                .expirationDate(request.getExpirationDate())
+                .clickCount(0)
+                .build();
+
+            ShortenedUrl saved = repository.save(shortenedUrl);
+            log.info("URL encurtada criada com sucesso: {} -> {} (alias: {})",
+                     originalUrl, shortCode, customAlias);
+
+            return mapper.toResponse(saved);
+
+        } catch (UrlInvalidaExceptionException | ValidationException | RepositoryException | MapperException ex) {
+            log.error("Erro durante encurtamento de URL: {}", ex.getMessage(), ex);
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Erro inesperado durante encurtamento de URL", ex);
+            throw new RuntimeException("Erro inesperado ao encurtar URL", ex);
         }
-
-        // Valida unicidade do alias customizado
-        String customAlias = request.getCustomAlias();
-        if (customAlias != null && !customAlias.isBlank()) {
-            customAlias = customAlias.trim();
-            businessValidator.validateCustomAliasUniqueness(customAlias);
-        } else {
-            customAlias = null;
-        }
-
-        // Gera short code ou usa customAlias
-        String shortCode = customAlias != null ? customAlias : generateUniqueShortCode();
-
-        // Cria e salva a nova URL encurtada
-        ShortenedUrl shortenedUrl = ShortenedUrl.builder()
-            .shortCode(shortCode)
-            .originalUrl(originalUrl)
-            .customAlias(customAlias)
-            .expirationDate(request.getExpirationDate())
-            .clickCount(0)
-            .build();
-
-        ShortenedUrl saved = repository.save(shortenedUrl);
-        log.info("URL encurtada criada: {} -> {} (alias: {})", originalUrl, shortCode, customAlias);
-
-        return mapper.toResponse(saved);
     }
 
     /**
@@ -108,11 +126,32 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
      *
      * @param shortCode código curto
      * @return DTO com informações da URL, ou Optional vazio
+      * @throws UrlNotFoundException se URL não for encontrada
+     * @throws RepositoryException se houver erro ao acessar banco
+     * @throws MapperException se houver erro ao mapear
      */
+    @Override
     @Transactional(readOnly = true)
     public Optional<ShortenUrlResponse> getShortenedUrl(String shortCode) {
-        Optional<ShortenedUrl> url = repository.findByShortCode(shortCode);
-        return url.map(mapper::toResponse);
+        log.debug("Buscando URL encurtada: {}", shortCode);
+
+        try {
+            Optional<ShortenedUrl> url = repository.findByShortCode(shortCode);
+            if (url.isEmpty()) {
+                log.warn("URL encurtada não encontrada: {}", shortCode);
+                throw new UrlNotFoundException();
+            }
+
+            log.debug("URL encurtada encontrada: {}", shortCode);
+            return url.map(mapper::toResponse);
+
+        } catch (RepositoryException | MapperException | UrlNotFoundException ex) {
+            log.error("Erro ao buscar URL encurtada: {}", shortCode, ex);
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Erro inesperado ao buscar URL encurtada", ex);
+            throw new RuntimeException("Erro inesperado ao buscar URL encurtada", ex);
+        }
     }
 
     /**
@@ -122,18 +161,28 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
      * @param shortCode código curto
      * @return URL original se encontrada e não expirada
      * @throws UrlExpiredException se URL estiver expirada
+     * @throws UrlNotFoundException se URL não for encontrada
+     * @throws RepositoryException se houver erro ao acessar banco
      */
+    @Override
     public Optional<String> redirectToOriginalUrl(String shortCode) {
-        Optional<ShortenedUrl> url = repository.findByShortCode(shortCode);
+        log.debug("Iniciando redirecionamento para: {}", shortCode);
 
-        if (url.isPresent()) {
+        try {
+            Optional<ShortenedUrl> url = repository.findByShortCode(shortCode);
+            if (url.isEmpty()) {
+                log.warn("URL encurtada não encontrada para redirecionamento: {}", shortCode);
+                throw new UrlNotFoundException();
+            }
+
             ShortenedUrl shortenedUrl = url.get();
 
             // Verifica expiração
             if (shortenedUrl.getExpirationDate() != null &&
                 LocalDateTime.now().isAfter(shortenedUrl.getExpirationDate())) {
-                log.warn("Tentativa de acesso à URL expirada: {}", shortCode);
-                throw new UrlExpiredException("URL expirada em " + shortenedUrl.getExpirationDate());
+                log.warn("Tentativa de acesso à URL expirada: {} (expirou em: {})",
+                         shortCode, shortenedUrl.getExpirationDate());
+                throw new UrlExpiredException();
             }
 
             // Incrementa clicks e atualiza último acesso
@@ -141,11 +190,20 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
             shortenedUrl.setLastAccessed(LocalDateTime.now());
             repository.save(shortenedUrl);
 
-            log.info("Redirecionamento: {} (clicks: {})", shortCode, shortenedUrl.getClickCount());
+            log.info("Redirecionamento bem-sucedido: {} (cliques: {})",
+                     shortCode, shortenedUrl.getClickCount());
             return Optional.of(shortenedUrl.getOriginalUrl());
-        }
 
-        return Optional.empty();
+        } catch (UrlExpiredException | UrlNotFoundException ex) {
+            log.warn("Exceção esperada ao redirecionar: {}", ex.getMessage());
+            throw ex;
+        } catch (RepositoryException ex) {
+            log.error("Erro de banco ao redirecionar: {}", shortCode, ex);
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Erro inesperado ao redirecionar", ex);
+            throw new RuntimeException("Erro inesperado ao redirecionar URL", ex);
+        }
     }
 
     /**
@@ -153,17 +211,30 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
      *
      * @param shortCode código curto
      * @return true se deletado, false se não encontrado
+     * @throws RepositoryException se houver erro ao acessar banco
      */
+    @Override
     public boolean deleteShortenedUrl(String shortCode) {
-        Optional<ShortenedUrl> url = repository.findByShortCode(shortCode);
+        log.debug("Iniciando deleção de URL: {}", shortCode);
 
-        if (url.isPresent()) {
+        try {
+            Optional<ShortenedUrl> url = repository.findByShortCode(shortCode);
+            if (url.isEmpty()) {
+                log.warn("URL não encontrada para deleção: {}", shortCode);
+                return false;
+            }
+
             repository.delete(url.get());
-            log.info("URL deletada: {}", shortCode);
+            log.info("URL deletada com sucesso: {}", shortCode);
             return true;
-        }
 
-        return false;
+        } catch (RepositoryException ex) {
+            log.error("Erro durante deleção de URL: {}", shortCode, ex);
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Erro inesperado ao deletar URL", ex);
+            throw new RuntimeException("Erro inesperado ao deletar URL", ex);
+        }
     }
 
     /**
@@ -171,11 +242,32 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
      *
      * @param shortCode código curto
      * @return DTO com informações, ou Optional vazio
+     * @throws UrlNotFoundException se URL não for encontrada
+     * @throws RepositoryException se houver erro ao acessar banco
+     * @throws MapperException se houver erro ao mapear
      */
+    @Override
     @Transactional(readOnly = true)
     public Optional<ShortenUrlResponse> getStats(String shortCode) {
-        Optional<ShortenedUrl> url = repository.findByShortCode(shortCode);
-        return url.map(mapper::toResponse);
+        log.debug("Buscando estatísticas da URL: {}", shortCode);
+
+        try {
+            Optional<ShortenedUrl> url = repository.findByShortCode(shortCode);
+            if (url.isEmpty()) {
+                log.warn("URL não encontrada para estatísticas: {}", shortCode);
+                throw new UrlNotFoundException();
+            }
+
+            log.debug("Estatísticas encontradas para: {}", shortCode);
+            return url.map(mapper::toResponse);
+
+        } catch (RepositoryException | MapperException | UrlNotFoundException ex) {
+            log.error("Erro ao buscar estatísticas: {}", shortCode, ex);
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Erro inesperado ao buscar estatísticas", ex);
+            throw new RuntimeException("Erro inesperado ao buscar estatísticas da URL", ex);
+        }
     }
 
     /**
@@ -183,18 +275,24 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
      * Utiliza retry com limite máximo
      *
      * @return short code único
+     * @throws RuntimeException se houver erro ao validar unicidade
      */
     private String generateUniqueShortCode() {
+        log.debug("Gerando short code único");
+
         for (int i = 0; i < MAX_RETRIES; i++) {
             String shortCode = ShortCodeGenerator.generateRandomCode();
 
             if (!repository.existsByShortCode(shortCode)) {
+                log.debug("Short code único gerado: {} (tentativa: {})", shortCode, i + 1);
                 return shortCode;
             }
         }
 
-        // Se atingir o limite de retries, usa código hash
-        throw new RuntimeException("Não foi possível gerar um short code único após " + MAX_RETRIES + " tentativas");
+        log.error("Não foi possível gerar short code único após {} tentativas", MAX_RETRIES);
+        throw new RuntimeException(
+            "Não foi possível gerar um short code único após " + MAX_RETRIES + " tentativas"
+        );
     }
 
 }

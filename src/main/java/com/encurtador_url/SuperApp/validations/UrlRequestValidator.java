@@ -1,11 +1,10 @@
 package com.encurtador_url.SuperApp.validations;
 
-import com.encurtador_url.SuperApp.exception.InvalidUrlException;
+import com.encurtador_url.SuperApp.exception.UrlInvalidaExceptionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 
 /**
@@ -27,7 +26,7 @@ public class UrlRequestValidator implements UrlValidator {
         log.debug("Validando URL original: {}", originalUrl);
 
         if (originalUrl == null || originalUrl.isBlank()) {
-            throw new InvalidUrlException("URL original não pode estar vazia");
+            throw new UrlInvalidaExceptionException("URL original não pode estar vazia");
         }
 
         // Remove espaços em branco
@@ -35,7 +34,7 @@ public class UrlRequestValidator implements UrlValidator {
 
         // Validações básicas de formato
         if (!originalUrl.startsWith("http://") && !originalUrl.startsWith("https://")) {
-            throw new InvalidUrlException("URL deve usar protocolo HTTP ou HTTPS");
+            throw new UrlInvalidaExceptionException("URL deve usar protocolo HTTP ou HTTPS");
         }
 
         // Validação mais rigorosa usando URI (java.net.URL está deprecated desde Java 20)
@@ -44,20 +43,20 @@ public class UrlRequestValidator implements UrlValidator {
 
             // Verifica se tem scheme (protocolo)
             if (uri.getScheme() == null || uri.getScheme().isEmpty()) {
-                throw new InvalidUrlException("URL deve conter um protocolo válido");
+                throw new UrlInvalidaExceptionException("URL deve conter um protocolo válido");
             }
 
             // Verifica se tem host
             if (uri.getHost() == null || uri.getHost().isEmpty()) {
-                throw new InvalidUrlException("URL deve conter um host válido");
+                throw new UrlInvalidaExceptionException("URL deve conter um host válido");
             }
         } catch (IllegalArgumentException e) {
-            throw new InvalidUrlException("URL inválida: " + e.getMessage());
+            throw new UrlInvalidaExceptionException("URL inválida: " + e.getMessage());
         }
 
         // Validação de tamanho máximo
         if (originalUrl.length() > 2048) {
-            throw new InvalidUrlException("URL excede tamanho máximo de 2048 caracteres");
+            throw new UrlInvalidaExceptionException("URL excede tamanho máximo de 2048 caracteres");
         }
 
         log.debug("URL original validada com sucesso");
@@ -72,11 +71,11 @@ public class UrlRequestValidator implements UrlValidator {
         log.debug("Validando alias customizado: {}", customAlias);
 
         if (customAlias.length() < 3 || customAlias.length() > 50) {
-            throw new InvalidUrlException("Alias deve ter entre 3 e 50 caracteres");
+            throw new UrlInvalidaExceptionException("Alias deve ter entre 3 e 50 caracteres");
         }
 
         if (!customAlias.matches("^[a-zA-Z0-9_-]+$")) {
-            throw new InvalidUrlException("Alias deve conter apenas letras, números, hífen e underscore");
+            throw new UrlInvalidaExceptionException("Alias deve conter apenas letras, números, hífen e underscore");
         }
 
         log.debug("Alias customizado validado com sucesso");
@@ -93,13 +92,13 @@ public class UrlRequestValidator implements UrlValidator {
         LocalDateTime now = LocalDateTime.now();
 
         if (expirationDate.isBefore(now)) {
-            throw new InvalidUrlException("Data de expiração não pode ser no passado");
+            throw new UrlInvalidaExceptionException("Data de expiração não pode ser no passado");
         }
 
         // Validação opcional: não pode ser muito distante (máximo 1 ano)
         LocalDateTime maxExpiration = now.plusYears(1);
         if (expirationDate.isAfter(maxExpiration)) {
-            throw new InvalidUrlException("Data de expiração não pode ser superior a 1 ano");
+            throw new UrlInvalidaExceptionException("Data de expiração não pode ser superior a 1 ano");
         }
 
         log.debug("Data de expiração validada com sucesso");
@@ -115,16 +114,16 @@ public class UrlRequestValidator implements UrlValidator {
         log.debug("Validando shortCode: {}", shortCode);
 
         if (shortCode == null || shortCode.isBlank()) {
-            throw new InvalidUrlException("Código curto não pode estar vazio");
+            throw new UrlInvalidaExceptionException("Código curto não pode estar vazio");
         }
 
         if (shortCode.length() < 3 || shortCode.length() > 50) {
-            throw new InvalidUrlException("Código curto deve ter entre 3 e 50 caracteres");
+            throw new UrlInvalidaExceptionException("Código curto deve ter entre 3 e 50 caracteres");
         }
 
         // Validação de formato (letras, números, hífen, underscore)
         if (!shortCode.matches("^[a-zA-Z0-9_-]+$")) {
-            throw new InvalidUrlException("Código curto contém caracteres inválidos");
+            throw new UrlInvalidaExceptionException("Código curto contém caracteres inválidos");
         }
 
         log.debug("ShortCode validado com sucesso");

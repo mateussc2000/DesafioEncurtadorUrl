@@ -2,7 +2,7 @@ package com.encurtador_url.SuperApp.service;
 
 import com.encurtador_url.SuperApp.dto.request.ShortenUrlRequest;
 import com.encurtador_url.SuperApp.dto.response.ShortenUrlResponse;
-import com.encurtador_url.SuperApp.exception.InvalidUrlException;
+import com.encurtador_url.SuperApp.exception.UrlInvalidaExceptionException;
 import com.encurtador_url.SuperApp.exception.UrlExpiredException;
 
 import java.util.Optional;
@@ -18,7 +18,7 @@ public interface ShortenUrlService {
      *
      * @param request contém a URL original, alias opcional e expiração
      * @return DTO com informações da URL encurtada
-     * @throws InvalidUrlException se URL for inválida
+     * @throws UrlInvalidaExceptionException se URL for inválida
      */
     ShortenUrlResponse shortenUrl(ShortenUrlRequest request);
 

@@ -1,7 +1,7 @@
-package com.encurtador_url.SuperApp.controller;
+package com.encurtador_url.SuperApp.handler;
 
 import com.encurtador_url.SuperApp.dto.response.ErrorResponse;
-import com.encurtador_url.SuperApp.exception.InvalidUrlException;
+import com.encurtador_url.SuperApp.exception.UrlInvalidaExceptionException;
 import com.encurtador_url.SuperApp.exception.UrlExpiredException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -20,9 +20,9 @@ public class GlobalExceptionHandler {
     /**
      * Trata InvalidUrlException
      */
-    @ExceptionHandler(InvalidUrlException.class)
+    @ExceptionHandler(UrlInvalidaExceptionException.class)
     public ResponseEntity<ErrorResponse> handleInvalidUrlException(
-            InvalidUrlException ex,
+            UrlInvalidaExceptionException ex,
             WebRequest request) {
 
         log.warn("URL inválida: {}", ex.getMessage());
