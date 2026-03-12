@@ -15,6 +15,7 @@
 - [Swagger UI](#-swagger-ui)
 - [H2 Console](#-h2-console)
 - [Testes](#-testes)
+- [Decisões de Design](#-decisões-de-design)
 - [Arquitetura](#-arquitetura)
 - [Algoritmo Base62](#-algoritmo-base62)
 - [Estrutura do Projeto](#-estrutura-do-projeto)
@@ -389,6 +390,63 @@ BUILD SUCCESS
 | `IdGeneratorTest` | Unitário | 71 |
 | `ShortenUrlMapperTest` | Unitário | 5 |
 | `SuperAppApplicationTests` | Contexto Spring | 1 |
+
+---
+
+## 🎯 Decisões de Design
+
+### Por que MVC em vez de Clean Architecture ou Hexagonal?
+
+A arquitetura **Spring MVC em camadas** (Controller → Service → Repository) foi escolhida conscientemente por ser a mais adequada à complexidade real deste projeto.
+
+| Critério | MVC em Camadas | Clean / Hexagonal |
+|---|---|---|
+| Complexidade do domínio | ✅ Baixa — 1 entidade, 6 operações | ❌ Overhead desnecessário |
+| Tempo de setup | ✅ Imediato | ❌ Ports, adapters, use cases, DTOs por camada |
+| Legibilidade | ✅ Fluxo linear fácil de seguir | ⚠️ Indireções aumentam curva de leitura |
+| Testabilidade | ✅ Mockito no service é suficiente | ✅ Igual, porém mais verbose |
+| Adequação ao desafio | ✅ Direto ao ponto | ❌ Engenharia além do necessário |
+
+**Clean Architecture e Hexagonal fazem sentido quando:**
+- O domínio é complexo com múltiplas regras de negócio
+- Há necessidade de trocar banco, framework ou interface sem reescrita
+- Times grandes trabalham em paralelo em módulos isolados
+
+**Neste projeto:**
+- Domínio é simples: encurtar URL, redirecionar, contar cliques
+- Uma única fonte de dados (H2), sem previsão de troca
+- Equipe pequena, entrega rápida, sem perda de qualidade
+
+> Usar Clean Architecture aqui seria **over-engineering** — adicionaria 3x mais arquivos e abstrações sem nenhum benefício real para a complexidade presente.
+
+---
+
+### Por que H2 em vez de PostgreSQL, MySQL ou MongoDB?
+
+O banco **H2 em arquivo** foi escolhido pela mesma lógica: adequação à complexidade do problema.
+
+| Critério | H2 (arquivo) | PostgreSQL / MySQL | MongoDB |
+|---|---|---|---|
+| Setup | ✅ Zero — embutido no JAR | ❌ Instalar + configurar servidor | ❌ Instalar + configurar servidor |
+| Configuração | ✅ 3 linhas no `.properties` | ❌ Usuário, senha, schema, driver | ❌ URI, replica set, schema |
+| Dados persistem | ✅ Sim (arquivo `.mv.db`) | ✅ Sim | ✅ Sim |
+| Rodando no Docker | ✅ Incluso no container | ❌ Container separado + compose | ❌ Container separado + compose |
+| Índices / ACID | ✅ Completo | ✅ Completo | ⚠️ Eventual consistency |
+| Escalabilidade | ⚠️ Adequado até ~100k registros | ✅ Milhões | ✅ Milhões |
+| Ideal para | 🏆 Desafio técnico | ⚖️ Produção com alta carga | ⚖️ Dados não-relacionais |
+
+**PostgreSQL faria sentido quando:**
+- O volume de URLs ultrapassar centenas de milhares
+- Houver necessidade de replicação, backup automatizado ou conexões concorrentes em escala
+- O ambiente de produção demandar SLA de disponibilidade
+
+**Neste projeto:**
+- Dados são simples e relacionais (1 tabela)
+- O H2 persiste em arquivo — nenhum dado é perdido no restart
+- O Docker monta `./data` como volume, tornando a persistência equivalente à de qualquer banco externo
+- Zero dependências externas: clonou, compilou, rodou
+
+> Adicionar um container PostgreSQL separado apenas para um desafio técnico aumentaria a complexidade operacional sem nenhum ganho funcional observável.
 
 ---
 

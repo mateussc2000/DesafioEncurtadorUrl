@@ -19,7 +19,7 @@ public enum ErrorCodeEnum {
     ERRO_API_KEY_INVALIDA("BFF00502", "X-API-Key inválida"),
 
     ERRO_URL_EXPIRADA("BFF00401", "URL expirada"),
-    ERRO_URL_NAO_ENCONTRADA("BFF00402", "URL não encontrada para ps parametros de pesquisa"),
+    ERRO_URL_NAO_ENCONTRADA("BFF00402", "URL não encontrada"),
     ERRO_URL_INVALIDA("BFF00403", "URL inválida"),
 
     ERRO_SISTEMICO("BFF99999", "Erro interno do servidor");
