@@ -8,6 +8,7 @@ import com.encurtador_url.SuperApp.service.ShortenUrlService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,10 +40,15 @@ public class ShortenUrlController {
      * @return ResponseEntity com a URL encurtada criada
      */
     @PostMapping("/")
-    @Operation(summary = "Encurtar uma URL", description = "Cria um identificador curto (ex: abc123) para uma URL longa")
+    @Operation(
+        summary = "Encurtar uma URL",
+        description = "Cria um identificador curto (ex: abc123) para uma URL longa. **Requer header X-API-Key.**"
+    )
+    @SecurityRequirement(name = "X-API-Key")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "URL encurtada criada com sucesso"),
         @ApiResponse(responseCode = "400", description = "Requisição inválida"),
+        @ApiResponse(responseCode = "401", description = "X-API-Key ausente ou inválida"),
     })
     public ResponseEntity<ShortenUrlResponse> shortenUrl(@RequestBody ShortenUrlRequest request) {
         ShortenUrlResponse response = service.shortenUrl(request);
@@ -128,10 +134,15 @@ public class ShortenUrlController {
      * @return ResponseEntity vazio
      */
     @DeleteMapping("/{shortCode}")
-    @Operation(summary = "Deletar URL", description = "Remove uma URL encurtada do sistema")
+    @Operation(
+        summary = "Deletar URL",
+        description = "Remove uma URL encurtada do sistema. **Requer header X-API-Key.**"
+    )
+    @SecurityRequirement(name = "X-API-Key")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "URL deletada com sucesso"),
         @ApiResponse(responseCode = "404", description = "URL não encontrada"),
+        @ApiResponse(responseCode = "401", description = "X-API-Key ausente ou inválida"),
     })
     public ResponseEntity<Void> deleteUrl(@PathVariable String shortCode) {
         boolean deleted = service.deleteShortenedUrl(shortCode);
