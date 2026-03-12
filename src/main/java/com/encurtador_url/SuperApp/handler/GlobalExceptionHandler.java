@@ -3,6 +3,7 @@ package com.encurtador_url.SuperApp.handler;
 import com.encurtador_url.SuperApp.dto.response.ErrorResponse;
 import com.encurtador_url.SuperApp.exception.UrlInvalidaExceptionException;
 import com.encurtador_url.SuperApp.exception.UrlExpiredException;
+import com.encurtador_url.SuperApp.exception.UrlNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -57,6 +58,27 @@ public class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(errorResponse, HttpStatus.GONE);
+    }
+
+    /**
+     * Trata UrlNotFoundException
+     */
+    @ExceptionHandler(UrlNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUrlNotFoundException(
+            UrlNotFoundException ex,
+            WebRequest request) {
+
+        log.warn("URL não encontrada: {}", ex.getMessage());
+
+        ErrorResponse errorResponse = new ErrorResponse(
+            HttpStatus.NOT_FOUND.value(),
+            ex.getMessage(),
+            "URL_NOT_FOUND",
+            null,
+            System.currentTimeMillis()
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 
     /**

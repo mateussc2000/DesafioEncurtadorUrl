@@ -204,7 +204,12 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
 
             log.info("Redirecionamento bem-sucedido: {} (cliques: {})",
                      shortCode, shortenedUrl.getClickCount());
-            return Optional.of(shortenedUrl.getOriginalUrl());
+
+            String originalUrl = shortenedUrl.getOriginalUrl();
+            if (!originalUrl.startsWith("http://") && !originalUrl.startsWith("https://")) {
+                originalUrl = "https://" + originalUrl;
+            }
+            return Optional.of(originalUrl);
 
         } catch (UrlExpiredException | UrlNotFoundException ex) {
             log.warn("Exceção esperada ao redirecionar: {}", ex.getMessage());

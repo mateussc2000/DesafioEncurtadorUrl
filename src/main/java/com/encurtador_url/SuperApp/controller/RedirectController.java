@@ -1,33 +1,38 @@
 package com.encurtador_url.SuperApp.controller;
 
 import com.encurtador_url.SuperApp.service.ShortenUrlService;
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
 import java.util.Optional;
 
 /**
- * Controller para redirecionar URLs curtas a partir da raiz
- * Exemplo: GET /abc123 → redireciona para a URL original
+ * Controller para redirecionar URLs curtas a partir da raiz.
+ * Exemplo: GET /abc123 → redireciona para a URL original.
+ *
+ * Ocultado do Swagger UI com @Hidden para evitar o erro "Failed to fetch":
+ * o Swagger usa fetch() que segue o 302 cross-origin automaticamente,
+ * e a URL de destino nunca terá cabeçalhos CORS.
+ * Use GET /v1/urls/{shortCode} no Swagger para consultar informações da URL.
  */
 @RestController
 @Slf4j
+@Hidden
+@CrossOrigin(origins = "*")
 public class RedirectController {
 
     @Autowired
     private ShortenUrlService service;
 
-    /**
-     * Redireciona para a URL original baseado no short code
-     *
-     * @param shortCode código curto da URL
-     * @return Redirecionamento para a URL original
-     */
     @GetMapping("/{shortCode}")
     public ResponseEntity<Void> redirectShortUrl(@PathVariable String shortCode) {
         // Valida o formato do short code
@@ -38,14 +43,29 @@ public class RedirectController {
         Optional<String> originalUrl = service.redirectToOriginalUrl(shortCode);
 
         if (originalUrl.isPresent()) {
-            log.info("Redirecionando {} para {}", shortCode, originalUrl.get());
-            return ResponseEntity.status(HttpStatus.FOUND)
-                                .header("Location", originalUrl.get())
-                                .build();
+            String url = sanitizeUrl(originalUrl.get());
+            log.info("Redirecionando {} → {}", shortCode, url);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setLocation(URI.create(url));
+            headers.add(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+            return new ResponseEntity<>(headers, HttpStatus.FOUND);
         }
 
         log.warn("Short code não encontrado: {}", shortCode);
         return ResponseEntity.notFound().build();
+    }
+
+    /**
+     * Garante que a URL possui scheme http/https.
+     * Evita o erro "URL scheme must be http or https" no browser.
+     */
+    private String sanitizeUrl(String url) {
+        if (url == null || url.isBlank()) return url;
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            return "https://" + url;
+        }
+        return url;
     }
 
     /**
@@ -66,4 +86,3 @@ public class RedirectController {
         return shortCode.matches("^[0-9A-Za-z]{3,10}$");
     }
 }
-
