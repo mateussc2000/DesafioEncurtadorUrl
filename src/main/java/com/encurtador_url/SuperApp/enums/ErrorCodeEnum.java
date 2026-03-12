@@ -15,6 +15,9 @@ public enum ErrorCodeEnum {
 
     ERRO_TOKEN("BFF00300", "Erro ao obter token"),
 
+    ERRO_API_KEY_AUSENTE("BFF00501", "Header X-API-Key é obrigatório"),
+    ERRO_API_KEY_INVALIDA("BFF00502", "X-API-Key inválida"),
+
     ERRO_URL_EXPIRADA("BFF00401", "URL expirada"),
     ERRO_URL_NAO_ENCONTRADA("BFF00402", "URL não encontrada para ps parametros de pesquisa"),
     ERRO_URL_INVALIDA("BFF00403", "URL inválida"),

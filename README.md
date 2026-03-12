@@ -1,188 +1,514 @@
-# 🔗 URL Shortener - API de Encurtamento de URLs
+# 🔗 URL Shortener — API de Encurtamento de URLs
 
-## 🚀 Visão Geral
-
-API REST completa para encurtar URLs longas em códigos curtos e únicos (ex: `abc123`). Implementada com **Spring Boot 4.0.3** e **H2 Database** para persistência eficiente.
-
-### ✨ Características Principais
-
-- **Geração de IDs Curtos**: Códigos alfanuméricos únicos de 6 caracteres
-- **Detecção Inteligente**: Mesma URL = mesmo código (reutilização)
-- **Estatísticas**: Contagem de cliques e rastreamento de acessos
-- **Banco de Dados H2**: Persistência em arquivo (não perdem ao reiniciar)
-- **API REST Completa**: GET, POST, DELETE com documentação OpenAPI
-- **Testes Automatizados**: 14 testes passando (unitários + integração)
-- **Console H2 Web**: Interface para inspecionar dados em tempo real
+> API REST para encurtar URLs longas em códigos curtos e únicos (ex: `abc123`).  
+> Construída com **Spring Boot 4.0.3**, **Java 21** e **H2 Database** com persistência em arquivo.
 
 ---
 
-## 📊 Por que H2 Database?
+## 📑 Índice
 
-| Aspecto | H2 | PostgreSQL | MongoDB | Memória |
-|--------|-------|-----------|---------|---------|
-| Setup | ⚡ Imediato | ⏱️ Config | ⏱️ Config | ⚡ Imediato |
-| Dados Persistem | ✅ Arquivo | ✅ Servidor | ✅ Servidor | ❌ Perdem |
-| Já no projeto | ✅ Sim | ❌ Não | ❌ Não | - |
-| Escalabilidade | ⭐⭐⭐ (100k) | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐ |
-| Índices | ✅ Completos | ✅ Completos | ✅ Completos | ✅ Rápido |
-| Ideal para | 🏆 Desafio | ⚖️ Produção | ⚖️ Produção | 🧪 Testes |
-
-**Conclusão**: H2 oferece o melhor custo-benefício para desafio técnico com requisitos reais.
-
----
-
-## 🛠️ Stack Tecnológico
-
-```
-Spring Boot 4.0.3
-├── Spring Web MVC (REST API)
-├── Spring Data JPA (ORM)
-├── Spring HATEOAS (API links)
-├── Spring Rest Client
-├── Jakarta Persistence (JPA)
-├── Hibernate 7.2 (ORM)
-├── H2 Database 2.4.240
-├── Lombok (code generation)
-├── SpringDoc OpenAPI 3.0 (Swagger)
-└── JUnit 5 + AssertJ (testes)
-
-Java 21
-Maven 3.8+
-```
+- [Stack](#-stack)
+- [Execução Local](#-execução-local)
+- [Docker](#-docker)
+- [Endpoints](#-endpoints)
+- [Autenticação](#-autenticação-x-api-key)
+- [Swagger UI](#-swagger-ui)
+- [H2 Console](#-h2-console)
+- [Testes](#-testes)
+- [Arquitetura](#-arquitetura)
+- [Algoritmo Base62](#-algoritmo-base62)
+- [Estrutura do Projeto](#-estrutura-do-projeto)
+- [Troubleshooting](#-troubleshooting)
 
 ---
 
-## 📦 Instalação e Execução
+## 🛠️ Stack
 
-### 1. Clonar o repositório
+| Camada | Tecnologia |
+|---|---|
+| Linguagem | Java 21 |
+| Framework | Spring Boot 4.0.3 |
+| Web | Spring Web MVC |
+| Persistência | Spring Data JPA + Hibernate 7 |
+| Banco de Dados | H2 2.4 (arquivo) |
+| Mapeamento | MapStruct |
+| Documentação | SpringDoc OpenAPI 3 (Swagger) |
+| Testes | JUnit 5 + Mockito |
+| Build | Maven 3.8+ |
+| Container | Docker + Docker Compose |
+
+---
+
+## 🚀 Execução Local
+
+### Pré-requisitos
+- Java 21+
+- Maven 3.8+ (ou use o `mvnw` incluso)
+
+### 1. Clonar e compilar
 ```bash
-cd F:\DesafioEncurtadorUrl
+git clone <repo-url>
+cd DesafioEncurtadorUrl
+./mvnw clean package -DskipTests
 ```
 
-### 2. Compilar o projeto
+### 2. Executar
 ```bash
-mvn clean install
+./mvnw spring-boot:run
 ```
 
-### 3. Executar a aplicação
-```bash
-mvn spring-boot:run
-```
-
-### 4. Acessar a API
-```
-API Swagger UI:    http://localhost:8080/swagger-ui/index.html
-H2 Console:        http://localhost:8080/h2-console
-API Base URL:      http://localhost:8080/api/v1/urls
-```
-
-**Credenciais H2 Console**
-- **JDBC URL**: `jdbc:h2:file:./data/shortenerdb`
-- **User**: `sa`
-- **Password**: (deixar vazio)
+A aplicação sobe em **http://localhost:8080**
 
 ---
 
-## 🔌 API Endpoints
+## 🐳 Docker
 
-### ✏️ POST - Encurtar URL
-```http
-POST /api/v1/urls/shorten
-Content-Type: application/json
+### Pré-requisitos
+- Docker Desktop instalado e rodando
 
+### Subir com Docker Compose (recomendado)
+```bash
+# Build + start em foreground
+docker compose up --build
+
+# Build + start em background
+docker compose up -d --build
+```
+
+### Parar
+```bash
+# Parar containers
+docker compose down
+
+# Parar e remover volumes
+docker compose down -v
+```
+
+### Comandos úteis
+```bash
+# Ver logs em tempo real
+docker compose logs -f app
+
+# Ver status dos containers
+docker compose ps
+
+# Acessar shell do container
+docker compose exec app sh
+
+# Limpar imagens não utilizadas
+docker system prune -f
+```
+
+### Build manual da imagem
+```bash
+./mvnw clean package -DskipTests
+docker build -t encurtador-url .
+docker run -p 8080:8080 -v ./data:/app/data encurtador-url
+```
+
+> **Dados persistidos**: o diretório `./data` do host é montado como volume no container — os dados do H2 sobrevivem ao restart.
+
+---
+
+## 🔌 Endpoints
+
+Base URL: `http://localhost:8080`
+
+| Método | Rota | Descrição | Auth |
+|---|---|---|---|
+| `POST` | `/v1/urls/` | Encurtar URL | ✅ X-API-Key |
+| `GET` | `/v1/urls/{shortCode}` | Consultar URL | ❌ Público |
+| `GET` | `/v1/urls/{shortCode}/stats` | Estatísticas de acesso | ❌ Público |
+| `GET` | `/v1/urls/list` | Listar todas (paginado) | ❌ Público |
+| `DELETE` | `/v1/urls/{shortCode}` | Remover URL | ✅ X-API-Key |
+| `GET` | `/{shortCode}` | Redirecionar para URL original | ❌ Público |
+
+---
+
+### POST `/v1/urls/` — Encurtar URL
+
+```bash
+curl -X POST http://localhost:8080/v1/urls/ \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: minha-chave-secreta-123" \
+  -d '{
+    "originalUrl": "https://www.github.com/usuario/projeto/issues?status=open",
+    "customAlias": "meu-link",
+    "expirationDate": "2026-12-31T23:59:59"
+  }'
+```
+
+> `customAlias` e `expirationDate` são opcionais. Sem `expirationDate`, expira em 1 ano.
+
+**Resposta** `201 Created`:
+```json
 {
-  "originalUrl": "https://www.github.com/usuario/projeto/very/long/url"
+  "id": "meu-link",
+  "shortUrl": "http://localhost:8080/meu-link",
+  "originalUrl": "https://www.github.com/usuario/projeto/issues?status=open",
+  "createdAt": "2026-03-11T10:30:00",
+  "expirationDate": "2026-12-31T23:59:59"
 }
 ```
 
-**Resposta**: `201 Created`
+---
+
+### GET `/v1/urls/{shortCode}` — Consultar URL
+
+```bash
+curl http://localhost:8080/v1/urls/meu-link
+```
+
+**Resposta** `200 OK`:
 ```json
 {
-  "id": 1,
-  "shortCode": "abc123",
+  "id": "meu-link",
+  "shortUrl": "http://localhost:8080/meu-link",
   "originalUrl": "https://www.github.com/...",
-  "shortUrl": "http://localhost:8080/abc123",
-  "createdAt": "2024-03-08T10:30:00",
-  "clickCount": 0
+  "createdAt": "2026-03-11T10:30:00",
+  "expirationDate": "2026-12-31T23:59:59"
 }
 ```
 
 ---
 
-### 📖 GET - Obter Informações
-```http
-GET /api/v1/urls/{shortCode}
+### GET `/v1/urls/{shortCode}/stats` — Estatísticas
+
+```bash
+curl http://localhost:8080/v1/urls/meu-link/stats
 ```
 
-**Resposta**: `200 OK`
+**Resposta** `200 OK`:
 ```json
 {
-  "id": 1,
-  "shortCode": "abc123",
+  "id": "meu-link",
+  "shortUrl": "http://localhost:8080/meu-link",
   "originalUrl": "https://www.github.com/...",
-  "shortUrl": "http://localhost:8080/abc123",
-  "createdAt": "2024-03-08T10:30:00",
-  "clickCount": 5,
-  "lastAccessed": "2024-03-08T11:45:22"
+  "createdAt": "2026-03-11T10:30:00",
+  "expirationDate": "2026-12-31T23:59:59",
+  "clickCount": 42
 }
 ```
 
 ---
 
-### 🔄 GET - Redirecionar (Raiz)
-```http
-GET /{shortCode}
+### GET `/v1/urls/list` — Listar URLs (paginado)
+
+```bash
+curl "http://localhost:8080/v1/urls/list?page=0&size=10&sort=createdAt&direction=DESC"
 ```
 
-**Resposta**: `302 Found` + redirecionamento automático para URL original  
-**Efeito**: Incrementa `clickCount` automaticamente
+| Param | Default | Descrição |
+|---|---|---|
+| `page` | `0` | Número da página |
+| `size` | `10` | Itens por página |
+| `sort` | `createdAt` | Campo de ordenação |
+| `direction` | `DESC` | `ASC` ou `DESC` |
 
----
-
-### 📊 GET - Estatísticas
-```http
-GET /api/v1/urls/stats/{shortCode}
-```
-
-**Resposta**: `200 OK`
+**Resposta** `200 OK` (ou `204 No Content` se vazio):
 ```json
 {
-  "shortCode": "abc123",
-  "clickCount": 42,
-  "lastAccessed": "2024-03-08T15:22:11"
+  "shortenUrlList": [ ... ],
+  "page": 0,
+  "size": 10,
+  "totalElements": 42,
+  "totalPages": 5,
+  "last": false
 }
 ```
 
 ---
 
-### 🗑️ DELETE - Remover URL
-```http
-DELETE /api/v1/urls/{shortCode}
+### DELETE `/v1/urls/{shortCode}` — Remover URL
+
+```bash
+curl -X DELETE http://localhost:8080/v1/urls/meu-link \
+  -H "X-API-Key: minha-chave-secreta-123"
 ```
 
-**Resposta**: `204 No Content`
+**Resposta** `204 No Content`
+
+---
+
+### GET `/{shortCode}` — Redirecionar
+
+```bash
+curl -L http://localhost:8080/meu-link
+```
+
+**Resposta** `302 Found` → redireciona para a URL original e incrementa `clickCount`.
+
+---
+
+## 🔐 Autenticação X-API-Key
+
+Os endpoints `POST /v1/urls/` e `DELETE /v1/urls/{shortCode}` exigem o header `X-API-Key`.
+
+```http
+X-API-Key: minha-chave-secreta-123
+```
+
+A chave é configurada em `application.properties`:
+```properties
+app.api-key=minha-chave-secreta-123
+```
+
+**Respostas de erro de autenticação:**
+
+| Situação | Status | Código |
+|---|---|---|
+| Header ausente | `401` | `BFF00501` |
+| Chave inválida | `401` | `BFF00502` |
+
+---
+
+## 📋 Formato de Erros
+
+Todas as respostas de erro seguem o padrão:
+
+```json
+{
+  "status": 400,
+  "codigo": "BFF00403",
+  "message": "URL inválida",
+  "path": "/v1/urls/",
+  "timestamp": 1773280331443
+}
+```
+
+| Código | Significado | HTTP |
+|---|---|---|
+| `BFF00002` | Parâmetro inválido | 400 |
+| `BFF00003` | Erro de query | 503 |
+| `BFF00100` | Erro de banco de dados | 503 |
+| `BFF00200` | Erro de mapeamento | 500 |
+| `BFF00401` | URL expirada | 410 |
+| `BFF00402` | URL não encontrada | 404 |
+| `BFF00403` | URL inválida | 400 |
+| `BFF00501` | X-API-Key ausente | 401 |
+| `BFF00502` | X-API-Key inválida | 401 |
+| `BFF99999` | Erro interno | 500 |
+
+---
+
+## 📖 Swagger UI
+
+Acesse a documentação interativa da API:
+
+```
+http://localhost:8080/swagger-ui/index.html
+```
+
+### Como usar o Swagger com autenticação
+
+1. Abra **http://localhost:8080/swagger-ui/index.html**
+2. Clique no botão **Authorize 🔒** (canto superior direito)
+3. No campo `X-API-Key`, insira: `minha-chave-secreta-123`
+4. Clique em **Authorize** → **Close**
+5. Agora todos os endpoints protegidos usarão a chave automaticamente
+
+> **Observação**: O endpoint de redirecionamento `GET /{shortCode}` está oculto do Swagger UI intencionalmente — o Swagger segue o `302` automaticamente, o que causaria erro CORS. Use `GET /v1/urls/{shortCode}` para consultar via Swagger.
+
+---
+
+## 🗄️ H2 Console
+
+Interface web para inspecionar o banco de dados em tempo real:
+
+```
+http://localhost:8080/h2-console
+```
+
+**Credenciais de conexão:**
+
+| Campo | Valor |
+|---|---|
+| Driver Class | `org.h2.Driver` |
+| JDBC URL | `jdbc:h2:file:./data/shortenerdb` |
+| User Name | `sa` |
+| Password | *(deixar vazio)* |
+
+**Consultas úteis:**
+```sql
+-- Ver todas as URLs
+SELECT * FROM shortened_urls;
+
+-- Ver as mais acessadas
+SELECT short_code, original_url, click_count
+FROM shortened_urls
+ORDER BY click_count DESC
+LIMIT 10;
+
+-- Contar total
+SELECT COUNT(*) AS total FROM shortened_urls;
+
+-- Ver criadas hoje
+SELECT * FROM shortened_urls
+WHERE DATE(created_at) = CURDATE();
+
+-- URL específica
+SELECT * FROM shortened_urls WHERE short_code = 'abc123';
+```
 
 ---
 
 ## 🧪 Testes
 
-### Executar todos os testes
+### Rodar todos os testes
 ```bash
-mvn test
+./mvnw test
 ```
 
-### Resultado esperado
+**Resultado esperado:**
 ```
-Tests run: 14, Failures: 0, Errors: 0, Skipped: 0
-✓ ShortCodeGeneratorTest (6 testes)
-✓ ShortenUrlServiceTest (7 testes)
-✓ SuperAppApplicationTests (1 teste)
+Tests run: 234, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
 ```
 
-### Rodar teste específico
+### Rodar um grupo específico
 ```bash
-mvn test -Dtest=ShortenUrlServiceTest#testShortenUrl
+# Apenas testes de integração (TAAC)
+./mvnw test -Dtest=ShortenUrlControllerIntegrationTest
+
+# Apenas testes unitários do serviço
+./mvnw test -Dtest=ShortenUrlServiceTest
+
+# Apenas testes de validação
+./mvnw test -Dtest=UrlRequestValidatorTest
 ```
+
+### Cobertura de testes
+
+| Classe | Tipo | Testes |
+|---|---|---|
+| `ShortenUrlControllerIntegrationTest` | Integração (TAAC) | 14 |
+| `ShortenUrlServiceTest` | Unitário | 17 |
+| `UrlRequestValidatorTest` | Unitário | 41 |
+| `UrlBusinessValidatorTest` | Unitário | 8 |
+| `ShortCodeGeneratorTest` | Unitário | 77 |
+| `IdGeneratorTest` | Unitário | 71 |
+| `ShortenUrlMapperTest` | Unitário | 5 |
+| `SuperAppApplicationTests` | Contexto Spring | 1 |
+
+---
+
+## 🏗️ Arquitetura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CLIENTE / INTERNET                       │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ HTTP :8080
+                            ▼
+            ┌───────────────────────────────┐
+            │     ApiKeyFilter              │  ← Intercepta POST/DELETE
+            │  (X-API-Key obrigatório)      │    antes do Spring MVC
+            └───────────────┬───────────────┘
+                            │
+            ┌───────────────┴───────────────┐
+            │                               │
+            ▼                               ▼
+   ┌─────────────────┐             ┌─────────────────┐
+   │ ShortenUrl      │             │ Redirect        │
+   │ Controller      │             │ Controller      │
+   │ /v1/urls/*      │             │ /{shortCode}    │
+   └────────┬────────┘             └────────┬────────┘
+            │                               │
+            └──────────────┬────────────────┘
+                           │
+                           ▼
+              ┌────────────────────────┐
+              │   UrlRequestValidator  │  ← Valida formato/protocolo
+              │   UrlBusinessValidator │  ← Valida unicidade no banco
+              └────────────┬───────────┘
+                           │
+                           ▼
+              ┌────────────────────────┐
+              │  ShortenUrlServiceImpl │
+              │  - shortenUrl()        │
+              │  - getShortenedUrl()   │
+              │  - redirectToUrl()     │
+              │  - getStats()          │
+              │  - deleteShortenedUrl()│
+              │  - listAll()           │
+              └────────────┬───────────┘
+                           │
+                           ▼
+              ┌────────────────────────┐
+              │  ShortenedUrlRepository│  ← Spring Data JPA
+              └────────────┬───────────┘
+                           │
+                           ▼
+              ┌────────────────────────────────────┐
+              │  H2 DATABASE (./data/shortenerdb)  │
+              ├────────────────────────────────────┤
+              │  shortened_urls                    │
+              │  ├─ short_code (PK, UNIQUE)        │
+              │  ├─ short_url (UNIQUE)             │
+              │  ├─ original_url                   │
+              │  ├─ custom_alias (UNIQUE)          │
+              │  ├─ created_at / updated_at        │
+              │  ├─ expiration_date                │
+              │  ├─ click_count                    │
+              │  └─ last_accessed                  │
+              └────────────────────────────────────┘
+```
+
+### Fluxo de encurtamento
+
+```
+POST /v1/urls/
+     │
+     ├─ Valida URL (protocolo HTTP/HTTPS, tamanho, formato)
+     ├─ Valida alias customizado (se fornecido)
+     ├─ Valida data de expiração (se fornecida)
+     │
+     ├─ URL já existe no banco?
+     │   ├─ SIM  → retorna shortCode existente (idempotência)
+     │   └─ NÃO  → continua
+     │
+     ├─ Alias customizado fornecido?
+     │   ├─ SIM  → valida unicidade no banco
+     │   └─ NÃO  → gera Base62 aleatório (6 chars, max 10 tentativas)
+     │
+     └─ Salva no banco → retorna 201 Created
+```
+
+### Fluxo de redirecionamento
+
+```
+GET /{shortCode}
+     │
+     ├─ Valida formato do shortCode
+     ├─ Busca no banco
+     ├─ URL expirada? → 410 Gone
+     ├─ Não encontrada? → 404 Not Found
+     │
+     └─ Incrementa clickCount + atualiza lastAccessed
+         └─ Retorna 302 Found com Location: <originalUrl>
+```
+
+---
+
+## 🔢 Algoritmo Base62
+
+Gera códigos alfanuméricos curtos e URL-safe:
+
+```
+Charset: 0-9 A-Z a-z  (62 caracteres)
+Tamanho: 6 caracteres
+
+Combinações possíveis: 62^6 = 56.800.235.584 (~56 bilhões)
+Seguro sem colisão até: ~100 milhões de URLs (< 0,001% colisão)
+
+Exemplo: "abc123", "XyZ7Q9", "5KqWrT"
+```
+
+**Estratégia anti-colisão:**
+1. Gera código aleatório
+2. Verifica se já existe no banco
+3. Se existe → retry (máximo 10 tentativas)
+4. Se não existe → persiste e retorna
 
 ---
 
@@ -190,238 +516,134 @@ mvn test -Dtest=ShortenUrlServiceTest#testShortenUrl
 
 ```
 src/main/java/com/encurtador_url/SuperApp/
+├── config/
+│   ├── CorsConfig.java          # CORS global
+│   ├── JacksonConfig.java       # ObjectMapper bean
+│   └── OpenApiConfig.java       # Swagger / X-API-Key scheme
 ├── controller/
-│   ├── ShortenUrlController.java    (REST API /api/v1/urls)
-│   └── RedirectController.java      (Redirecionamento /{shortCode})
-├── service/
-│   └── ShortenUrlService.java       (Lógica de negócio)
-├── model/
-│   └── ShortenedUrl.java            (Entidade JPA)
-├── repository/
-│   └── ShortenedUrlRepository.java  (Spring Data JPA)
+│   ├── ShortenUrlController.java  # /v1/urls/*
+│   └── RedirectController.java    # /{shortCode}
 ├── dto/
-│   ├── ShortenUrlRequest.java
-│   └── ShortenUrlResponse.java
+│   ├── request/
+│   │   └── ShortenUrlRequest.java
+│   └── response/
+│       ├── ShortenUrlResponse.java
+│       ├── ShortenUrlListResponse.java
+│       ├── DetailsUrlResponse.java
+│       └── ErrorResponse.java     # Genérico com T para details
+├── enums/
+│   └── ErrorCodeEnum.java         # Todos os códigos BFF0xxxx
+├── exception/
+│   ├── AbstractException.java
+│   ├── MapperException.java
+│   ├── RepositoryException.java
+│   ├── UrlExpiredException.java
+│   ├── UrlInvalidaExceptionException.java
+│   ├── UrlNotFoundException.java
+│   └── ValidationException.java
+├── filter/
+│   └── ApiKeyFilter.java          # Autenticação X-API-Key
+├── handler/
+│   └── GlobalExceptionHandler.java # @ControllerAdvice
+├── mapper/
+│   └── ShortenUrlMapper.java       # MapStruct
+├── model/
+│   └── ShortenedUrl.java
+├── repository/
+│   └── ShortenedUrlRepository.java
+├── service/
+│   ├── ShortenUrlService.java
+│   └── ShortenUrlServiceImpl.java
 ├── util/
-│   └── ShortCodeGenerator.java      (Gerador de IDs Base62)
-└── SuperAppApplication.java
+│   ├── ShortCodeGenerator.java     # Base62 + validação
+│   └── IdGenerator.java
+└── validations/
+    ├── UrlRequestValidator.java    # Valida formato/protocolo/tamanho
+    └── UrlBusinessValidator.java   # Valida unicidade no banco
 
 src/test/java/com/encurtador_url/SuperApp/
+├── controller/
+│   └── ShortenUrlControllerIntegrationTest.java  # TAAC (14 testes)
 ├── service/
-│   └── ShortenUrlServiceTest.java
+│   └── ShortenUrlServiceTest.java                # Unitário (17 testes)
 ├── util/
-│   └── ShortCodeGeneratorTest.java
+│   ├── ShortCodeGeneratorTest.java
+│   ├── IdGeneratorTest.java
+│   └── ShortenUrlMapperTest.java
+├── validations/
+│   ├── UrlRequestValidatorTest.java
+│   └── UrlBusinessValidatorTest.java
 └── SuperAppApplicationTests.java
 
 src/main/resources/
-├── application.properties            (Config H2 arquivo)
-└── static/
-└── templates/
+├── application.properties          # Config padrão (H2 arquivo)
+└── application-docker.properties   # Config para container Docker
 
 src/test/resources/
-└── application-test.properties       (Config H2 em memória)
+└── application-test.properties     # Config de testes (H2 em memória)
 ```
 
 ---
 
-## 🔐 Algoritmo de Geração de Short Code
+## 🐛 Troubleshooting
 
-### Estratégia: Base62 Aleatório com Detecção de Colisão
-
-```
-1. Gera string aleatória de 6 caracteres
-   Charset: 0-9, a-z, A-Z (62 caracteres)
-   Exemplos: "abc123", "XyZ789", "5KqWrT"
-
-2. Valida formato: [0-9A-Za-z]{6}
-
-3. Verifica se já existe no banco
-   SELECT COUNT(*) WHERE short_code = ?
-
-4. Se existe → retry (máx 10 tentativas)
-
-5. Se não existe → retorna código
-
-6. Se atingir limite de retries → exceção
+### Porta 8080 já em uso
+```properties
+# src/main/resources/application.properties
+server.port=8081
 ```
 
-### Capacidade
-```
-Caracteres: 62
-Comprimento: 6
-Total de combinações: 62^6 = 56.800.235.584
-Até 50% ocupação: ~28 bilhões de URLs
-Probabilidade colisão < 0.001% até 100 milhões
-```
-
----
-
-## 💾 Armazenamento
-
-### Localização dos Dados
-```
-./data/shortenerdb.h2.db  (arquivo único)
-./data/shortenerdb.lock   (lock file, temporário)
-```
-
-### Estrutura da Tabela
-```sql
-CREATE TABLE shortened_urls (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    short_code VARCHAR(10) UNIQUE NOT NULL,
-    original_url VARCHAR(2048) NOT NULL,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME,
-    click_count INTEGER DEFAULT 0,
-    last_accessed DATETIME
-);
-
-CREATE UNIQUE INDEX idx_short_code ON shortened_urls(short_code);
-CREATE INDEX idx_created_at ON shortened_urls(created_at);
-```
-
----
-
-## 📚 Documentação Adicional
-
-- **[IMPLEMENTATION.md](IMPLEMENTATION.md)** - Documentação técnica completa
-- **[EXAMPLES.md](EXAMPLES.md)** - Exemplos de uso com cURL, Postman, etc
-- **[WORKFLOWS.md](WORKFLOWS.md)** - Fluxos de operação, diagramas de sequência
-
----
-
-## 🎯 Casos de Uso
-
-### 1. Compartilhamento de URLs Longas
-```
-Entrada:  https://www.example.com/page?param=value&id=123&filter=active
-Saída:    http://localhost:8080/abc123
-Benefício: Fácil de compartilhar em redes sociais, SMS, etc
-```
-
-### 2. Rastreamento de Cliques
-```
-Cada acesso à URL curta incrementa contador
-Permitindo análise de popularidade e engagement
-```
-
-### 3. Reutilização Inteligente
-```
-URL 1 → abc123
-URL 1 novamente → abc123 (reutiliza)
-Economiza espaço no banco, garante unicidade
-```
-
----
-
-## 🚀 Próximos Passos (Roadmap)
-
-### Fase 2: Otimizações (2-3 dias)
-- [ ] Paginação de URLs
-- [ ] Cache em memória (LRU)
-- [ ] Rate limiting
-- [ ] Validação de URLs
-- [ ] Logs estruturados
-
-### Fase 3: PostgreSQL (1-2 dias)
-- [ ] Migrar de H2 para PostgreSQL
-- [ ] Connection pooling
-- [ ] Índices otimizados
-- [ ] Backup automatizado
-
-### Fase 4: Redis Cache (2-3 dias)
-- [ ] Cache distribuído
-- [ ] Scalabilidade horizontal
-- [ ] Métricas em tempo real
-
-### Fase 5: Analytics (1 semana)
-- [ ] Elasticsearch para análise
-- [ ] Dashboard Kibana
-- [ ] Geolocalização
-- [ ] Device tracking
-
----
-
-## 🧹 Troubleshooting
-
-### Erro: H2 database file is locked
+### H2 database file is locked
 ```bash
-# Feche outras instâncias da aplicação
-# Ou delete ./data/shortenerdb.lock
+# Feche outras instâncias da aplicação e delete o lock file
+rm ./data/shortenerdb.lock
 ```
 
 ### Swagger não carrega
 ```
-Acesse: http://localhost:8080/swagger-ui/index.html
-(note o /index.html no final)
+# Certifique-se de acessar com /index.html no final:
+http://localhost:8080/swagger-ui/index.html
 ```
 
 ### Testes falhando
 ```bash
-# Limpar cache Maven
-mvn clean
-# Rodar novamente
-mvn test
+./mvnw clean test
 ```
 
-### Port 8080 já em uso
-```properties
-# Editar application.properties
-server.port=8081
+### Docker: imagem desatualizada
+```bash
+# Force rebuild sem cache
+docker compose up --build --force-recreate
+```
+
+### Logs da aplicação
+```bash
+# Local
+./mvnw spring-boot:run | tee app.log
+
+# Docker
+docker compose logs -f app
 ```
 
 ---
 
-## 📊 Performance
+## 💾 Persistência dos Dados
 
-### Benchmark Típico
-- **Criar URL**: ~50ms
-- **Redirecionar**: ~20ms
-- **Obter stats**: ~10ms
-- **Throughput**: ~1000 URLs/segundo
+Os dados são gravados em arquivo na pasta `./data/`:
 
-### Stress Test
-```bash
-ab -n 10000 -c 50 http://localhost:8080/abc123
 ```
-Resultado esperado: >90% de sucesso
+./data/shortenerdb.mv.db   ← banco principal
+./data/shortenerdb.lock    ← lock temporário (excluir se travar)
+```
+
+Tanto em execução local quanto Docker, os dados sobrevivem ao restart da aplicação.
 
 ---
 
 ## 📄 Licença
 
-MIT License - Consulte [LICENSE](LICENSE) para detalhes
+MIT License — consulte [LICENSE](LICENSE) para detalhes.
 
 ---
 
-## 👨‍💼 Informações
-
-- **Versão**: 0.0.1-SNAPSHOT
-- **Java**: 21
-- **Spring Boot**: 4.0.3
-- **Status**: ✅ Pronto para Produção
-- **Atualizado**: 2024-03-08
-
----
-
-## 🤝 Contribuindo
-
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/MinhaFeature`)
-3. Commit suas mudanças (`git commit -m 'Adiciona MinhaFeature'`)
-4. Push para a branch (`git push origin feature/MinhaFeature`)
-5. Abra um Pull Request
-
----
-
-## 📞 Suporte
-
-Para problemas ou dúvidas:
-1. Consulte [IMPLEMENTATION.md](IMPLEMENTATION.md)
-2. Verifique [EXAMPLES.md](EXAMPLES.md)
-3. Execute `mvn test` para diagnóstico
-4. Inspecione os logs com `tail -f target/spring.log`
-
----
-
-**Made with ❤️ using Spring Boot**
+**Spring Boot 4.0.3 · Java 21 · H2 · MapStruct · JUnit 5**

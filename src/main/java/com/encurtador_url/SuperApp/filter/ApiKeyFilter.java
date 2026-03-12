@@ -1,9 +1,13 @@
 package com.encurtador_url.SuperApp.filter;
 
+import com.encurtador_url.SuperApp.dto.response.ErrorResponse;
+import com.encurtador_url.SuperApp.enums.ErrorCodeEnum;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
@@ -21,12 +25,15 @@ import java.io.IOException;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class ApiKeyFilter extends OncePerRequestFilter {
 
     public static final String API_KEY_HEADER = "X-API-Key";
 
     @Value("${app.api-key}")
     private String configuredApiKey;
+
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -42,13 +49,13 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
         if (providedKey == null || providedKey.isBlank()) {
             log.warn("Requisição sem X-API-Key: {} {}", request.getMethod(), request.getRequestURI());
-            writeUnauthorized(response, "Header X-API-Key é obrigatório");
+            writeErrorResponse(response, ErrorCodeEnum.ERRO_API_KEY_AUSENTE, request.getRequestURI());
             return;
         }
 
         if (!configuredApiKey.equals(providedKey)) {
             log.warn("X-API-Key inválida recebida: {} {}", request.getMethod(), request.getRequestURI());
-            writeUnauthorized(response, "X-API-Key inválida");
+            writeErrorResponse(response, ErrorCodeEnum.ERRO_API_KEY_INVALIDA, request.getRequestURI());
             return;
         }
 
@@ -56,19 +63,14 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Define quais rotas exigem autenticação por API Key.
-     */
     private boolean requiresApiKey(HttpServletRequest request) {
         String method = request.getMethod();
         String uri = request.getRequestURI();
 
-        // POST /v1/urls/ — criar URL
         if (HttpMethod.POST.matches(method) && uri.startsWith("/v1/urls")) {
             return true;
         }
 
-        // DELETE /v1/urls/{shortCode} — deletar URL
         if (HttpMethod.DELETE.matches(method) && uri.startsWith("/v1/urls")) {
             return true;
         }
@@ -76,18 +78,15 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         return false;
     }
 
-    private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
+    private void writeErrorResponse(HttpServletResponse response,
+                                    ErrorCodeEnum errorCodeEnum,
+                                    String path) throws IOException {
+        ErrorResponse<?> body = new ErrorResponse<>(errorCodeEnum, HttpStatus.UNAUTHORIZED.value(), path);
+
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        response.getWriter().write("""
-                {
-                  "status": 401,
-                  "error": "UNAUTHORIZED",
-                  "message": "%s",
-                  "timestamp": %d
-                }
-                """.formatted(message, System.currentTimeMillis()));
+        objectMapper.writeValue(response.getWriter(), body);
     }
 }
 

@@ -69,7 +69,7 @@
 │ Cliente │
 └────┬────┘
      │
-     │ POST /api/v1/urls/shorten
+     │ POST /v1/urls/
      │ {originalUrl: "https://..."}
      │
      ▼
@@ -335,11 +335,11 @@ ESTADO: Nova URL
 ┌─────────────────────────────────┐
 │ Criação                         │
 │                                 │
-│ POST /api/v1/urls/shorten       │
-│ → short_code gerado             │
-│ → original_url armazenado       │
-│ → click_count = 0               │
-│ → created_at = NOW()            │
+│ POST /v1/urls/              │
+│ → short_code gerado         │
+│ → original_url armazenado   │
+│ → click_count = 0           │
+│ → created_at = NOW()        │
 └────────┬────────────────────────┘
          │
          ▼
@@ -362,7 +362,7 @@ ESTADO: Com Atividade      ESTADO: Inativa
 │ Após múltiplos       │  │ Sem atividade   │
 │ acessos              │  │ por tempo       │
 │                      │  │                 │
-│ GET /stats/...       │  │ Candidata para  │
+│ GET /v1/urls/{code}/stats │  │ Candidata para  │
 │ → Mostra stats       │  │ limpeza         │
 │ → click_count > 0    │  │                 │
 │                      │  │ (futuro)        │
