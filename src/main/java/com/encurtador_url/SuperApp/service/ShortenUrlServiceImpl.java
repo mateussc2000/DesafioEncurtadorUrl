@@ -1,6 +1,7 @@
 package com.encurtador_url.SuperApp.service;
 
 import com.encurtador_url.SuperApp.dto.request.ShortenUrlRequest;
+import com.encurtador_url.SuperApp.dto.response.DetailsUrlResponse;
 import com.encurtador_url.SuperApp.dto.response.ShortenUrlListResponse;
 import com.encurtador_url.SuperApp.dto.response.ShortenUrlResponse;
 import com.encurtador_url.SuperApp.exception.*;
@@ -113,7 +114,7 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
                 .shortUrl(shortUrl)
                 .originalUrl(originalUrl)
                 .customAlias(customAlias)
-                .expirationDate(request.getExpirationDate())
+                .expirationDate(request.getExpirationDate() == null ? LocalDateTime.now().plusYears(1) : request.getExpirationDate()) // EXPIRA EM 1 ANO POR PADRÃO
                 .clickCount(0)
                 .build();
 
@@ -259,7 +260,7 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Optional<ShortenUrlResponse> getStats(String shortCode) {
+    public Optional<DetailsUrlResponse> getStats(String shortCode) {
         log.debug("Buscando estatísticas da URL: {}", shortCode);
 
         try {
@@ -270,7 +271,7 @@ public class ShortenUrlServiceImpl implements ShortenUrlService {
             }
 
             log.debug("Estatísticas encontradas para: {}", shortCode);
-            return url.map(mapper::toResponse);
+            return url.map(mapper::toDetailsResponse);
 
         } catch (RepositoryException | MapperException | UrlNotFoundException ex) {
             log.error("Erro ao buscar estatísticas: {}", shortCode, ex);

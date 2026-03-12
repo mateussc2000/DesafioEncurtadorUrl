@@ -1,5 +1,5 @@
 # Dockerfile para aplicação Spring Boot com H2
-FROM openjdk:21-jdk-slim
+FROM eclipse-temurin:21-jdk-jammy
 
 # Definir diretório de trabalho
 WORKDIR /app

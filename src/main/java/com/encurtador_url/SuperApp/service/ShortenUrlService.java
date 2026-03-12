@@ -1,6 +1,7 @@
 package com.encurtador_url.SuperApp.service;
 
 import com.encurtador_url.SuperApp.dto.request.ShortenUrlRequest;
+import com.encurtador_url.SuperApp.dto.response.DetailsUrlResponse;
 import com.encurtador_url.SuperApp.dto.response.ShortenUrlListResponse;
 import com.encurtador_url.SuperApp.dto.response.ShortenUrlResponse;
 import com.encurtador_url.SuperApp.exception.UrlExpiredException;
@@ -23,7 +24,7 @@ public interface ShortenUrlService {
 
     boolean deleteShortenedUrl(String shortCode);
 
-    Optional<ShortenUrlResponse> getStats(String shortCode);
+    Optional<DetailsUrlResponse> getStats(String shortCode);
 
     /**
      * Lista todas as URLs encurtadas com paginação

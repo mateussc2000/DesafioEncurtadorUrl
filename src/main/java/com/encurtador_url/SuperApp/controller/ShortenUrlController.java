@@ -1,6 +1,7 @@
 package com.encurtador_url.SuperApp.controller;
 
 import com.encurtador_url.SuperApp.dto.request.ShortenUrlRequest;
+import com.encurtador_url.SuperApp.dto.response.DetailsUrlResponse;
 import com.encurtador_url.SuperApp.dto.response.ShortenUrlListResponse;
 import com.encurtador_url.SuperApp.dto.response.ShortenUrlResponse;
 import com.encurtador_url.SuperApp.service.ShortenUrlService;
@@ -79,8 +80,8 @@ public class ShortenUrlController {
         @ApiResponse(responseCode = "200", description = "Estatísticas obtidas"),
         @ApiResponse(responseCode = "404", description = "URL não encontrada"),
     })
-    public ResponseEntity<ShortenUrlResponse> getStats(@PathVariable String shortCode) {
-        Optional<ShortenUrlResponse> response = service.getStats(shortCode);
+    public ResponseEntity<DetailsUrlResponse> getStats(@PathVariable String shortCode) {
+        Optional<DetailsUrlResponse> response = service.getStats(shortCode);
         return response.map(ResponseEntity::ok)
                       .orElseGet(() -> ResponseEntity.notFound().build());
     }
