@@ -86,28 +86,6 @@ public class ShortenUrlController {
     }
 
     /**
-     * Deleta uma URL encurtada
-     *
-     * @param shortCode código curto
-     * @return ResponseEntity vazio
-     */
-    @DeleteMapping("/{shortCode}")
-    @Operation(summary = "Deletar URL", description = "Remove uma URL encurtada do sistema")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "URL deletada com sucesso"),
-        @ApiResponse(responseCode = "404", description = "URL não encontrada"),
-    })
-    public ResponseEntity<Void> deleteUrl(@PathVariable String shortCode) {
-        boolean deleted = service.deleteShortenedUrl(shortCode);
-
-        if (deleted) {
-            return ResponseEntity.noContent().build();
-        }
-
-        return ResponseEntity.notFound().build();
-    }
-
-    /**
      * Lista todas as URLs encurtadas com paginação
      *
      * @param page número da página (default 0)
@@ -141,4 +119,27 @@ public class ShortenUrlController {
 
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * Deleta uma URL encurtada
+     *
+     * @param shortCode código curto
+     * @return ResponseEntity vazio
+     */
+    @DeleteMapping("/{shortCode}")
+    @Operation(summary = "Deletar URL", description = "Remove uma URL encurtada do sistema")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "URL deletada com sucesso"),
+        @ApiResponse(responseCode = "404", description = "URL não encontrada"),
+    })
+    public ResponseEntity<Void> deleteUrl(@PathVariable String shortCode) {
+        boolean deleted = service.deleteShortenedUrl(shortCode);
+
+        if (deleted) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.notFound().build();
+    }
+
 }

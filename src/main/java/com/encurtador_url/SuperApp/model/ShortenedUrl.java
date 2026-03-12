@@ -23,7 +23,7 @@ public class ShortenedUrl {
     @Column(name = "short_code", nullable = false, unique = true, length = 10)
     private String shortCode;
 
-    @Column(name = "short_url", nullable = false, unique = true, length = 100)
+    @Column(name = "short_url", unique = true, length = 512)
     private String shortUrl;
 
     @Column(name = "original_url", nullable = false, length = 2048)
