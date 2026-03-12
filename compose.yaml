@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    container_name: encurtador_url_app
+    ports:
+      - "8080:8080"
+    volumes:
+      # Montar diretório data para persistir banco H2
+      - ./data:/app/data
+    environment:
+      # Configurações da aplicação (já definidas no application.properties)
+      - SPRING_PROFILES_ACTIVE=docker
+      # URL base usada para gerar links encurtados (acessível do host)
+      - APP_BASE_URL=http://localhost:8080
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

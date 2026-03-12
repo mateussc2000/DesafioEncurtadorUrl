@@ -1,0 +1,458 @@
+# 🎨 Diagramas e Visualizações
+
+## Arquitetura da Aplicação
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     INTERNET / CLIENTE                      │
+└───────────────────────┬─────────────────────────────────────┘
+                        │
+                        ▼
+        ┌──────────────────────────────────┐
+        │      SPRING BOOT APPLICATION     │
+        │     (Port 8080)                  │
+        └──────────────┬───────────────────┘
+                       │
+        ┌──────────────┴──────────────────────────────┐
+        │                                             │
+        ▼                                             ▼
+   ┌─────────────────┐                      ┌─────────────────┐
+   │  Controllers    │                      │   Swagger UI    │
+   ├─────────────────┤                      │  (API Docs)     │
+   │ • ShortenUrl    │                      └─────────────────┘
+   │ • Redirect      │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │    Services     │
+   ├─────────────────┤
+   │ ShortenUrl      │
+   │ - shortenUrl()  │
+   │ - redirect()    │
+   │ - getStats()    │
+   │ - delete()      │
+   └────────┬────────┘
+            │
+            ▼
+   ┌─────────────────┐
+   │  Repository     │
+   │    (JPA)        │
+   ├─────────────────┤
+   │ • findByCode    │
+   │ • findByUrl     │
+   │ • save          │
+   │ • delete        │
+   └────────┬────────┘
+            │
+            ▼
+   ┌──────────────────────────────────────┐
+   │     H2 DATABASE (Arquivo)            │
+   │  ./data/shortenerdb.h2.db            │
+   ├──────────────────────────────────────┤
+   │ shortened_urls (Tabela)              │
+   │ ├─ id (PK)                           │
+   │ ├─ short_code (UNIQUE)               │
+   │ ├─ original_url                      │
+   │ ├─ created_at, updated_at            │
+   │ ├─ click_count                       │
+   │ └─ last_accessed                     │
+   └──────────────────────────────────────┘
+```
+
+---
+
+## Fluxo de Encurtamento de URL (Passo a Passo)
+
+```
+┌─────────┐
+│ Cliente │
+└────┬────┘
+     │
+     │ POST /v1/urls/
+     │ {originalUrl: "https://..."}
+     │
+     ▼
+┌─────────────────────────────────────────────┐
+│ ShortenUrlController.shortenUrl()           │
+│                                             │
+│ 1. Valida Request                          │
+│    └─ URL não vazia? ✓                     │
+│                                             │
+│ 2. Chama Service                           │
+     │
+     ▼
+┌─────────────────────────────────────────────┐
+│ ShortenUrlService.shortenUrl()              │
+│                                             │
+│ 3. Busca URL existente                     │
+│    SELECT * WHERE original_url = ?         │
+│                                             │
+     │
+     ├─ Encontrou? ──────────────────┐
+     │                               │
+     │ Não encontrou                 │ Encontrou
+     │                               │
+     ▼                               ▼
+┌──────────────────────────┐   ┌─────────────────────┐
+│ 4. Gera Short Code       │   │ 5. Retorna Código   │
+│    - Base62 aleatório    │   │    Existente        │
+│    - 6 caracteres        │   │                     │
+│    - Exemplo: abc123     │   │ Resposta 201        │
+│                          │   │ {shortCode: ...}    │
+│ 5. Verifica Colisão      │   │                     │
+│    EXISTS(short_code)    │   │ END                 │
+│                          │   └─────────────────────┘
+     │
+     ├─ Colisão? ─────────────────┐
+     │                             │
+     │ Não              Sim (Retry)
+     │                             │
+     ▼                             ▼
+┌──────────────────────────┐   (Loop até 10x)
+│ 6. Salva no Banco        │
+│    INSERT INTO ...       │
+│                          │
+│ 7. Retorna Resposta      │
+│    201 Created           │
+│    {                     │
+│      shortCode: abc123   │
+│      shortUrl: http://...│
+│      ...                 │
+│    }                     │
+└──────────────────────────┘
+```
+
+---
+
+## Fluxo de Redirecionamento
+
+```
+┌─────────┐
+│ Cliente │  GET /abc123 (ou clic em link)
+└────┬────┘
+     │
+     ▼
+┌──────────────────────────────────┐
+│ RedirectController.redirect()    │
+│                                  │
+│ 1. Valida Short Code             │
+│    - Formato correto? ✓          │
+│    - Não é rota reservada?       │
+│                                  │
+│ 2. Chama Service                 │
+     │
+     ▼
+┌──────────────────────────────────────────┐
+│ ShortenUrlService                        │
+│ .redirectToOriginalUrl(shortCode)        │
+│                                          │
+│ 3. Busca URL no Banco                    │
+│    SELECT * WHERE short_code = ?         │
+│                                          │
+     │
+     ├─ Encontrou? ──────────────────┐
+     │                               │
+     │ Não encontrou                 │ Encontrou
+     │                               │
+     ▼                               ▼
+┌──────────────────────────┐   ┌─────────────────────────┐
+│ 4. Retorna 404          │   │ 5. Incrementa Cliques   │
+│    Not Found            │   │    UPDATE click_count=  │
+│                         │   │    click_count + 1      │
+│ END                     │   │                         │
+└──────────────────────────┘   │ 6. Atualiza Último Acesso
+                               │    last_accessed = NOW()
+                               │
+                               │ 7. Retorna 302 Found
+                               │    Location: https://...
+                               │
+                               ▼
+                        ┌──────────────┐
+                        │   Browser    │
+                        │              │
+                        │ Segue para   │
+                        │ URL original │
+                        └──────────────┘
+```
+
+---
+
+## Algoritmo de Geração de Short Code
+
+```
+┌──────────────────────────────────┐
+│ Iniciação                        │
+│ MAX_RETRIES = 10                 │
+│ iteration = 0                    │
+└────────────┬─────────────────────┘
+             │
+             ▼
+        ┌─────────────────────┐
+        │ Iteração < 10?      │
+        └──────────┬──────────┘
+                   │
+         ┌─────────┴─────────┐
+         │                   │
+        NÃO                 SIM
+         │                   │
+         ▼                   ▼
+    ┌────────┐      ┌─────────────────┐
+    │ ERRO   │      │ Gera Aleatório  │
+    └────────┘      │                 │
+                    │ charset =       │
+                    │ "0-9a-zA-Z"     │
+                    │ (62 chars)      │
+                    │                 │
+                    │ Exemplo:        │
+                    │ "abc123"        │
+                    │                 │
+                    │ código gerado   │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ Valida Formato  │
+                    │                 │
+                    │ Regex:          │
+                    │ ^[0-9A-Za-z]{6}$│
+                    └────────┬────────┘
+                             │
+                    ┌────────┴────────┐
+                    │                 │
+                  VÁLIDO          INVÁLIDO
+                    │                 │
+                    ▼                 ▼
+           ┌──────────────┐      (Retry)
+           │ Verifica no  │
+           │ Banco:       │
+           │              │
+           │ SELECT COUNT │
+           │ WHERE        │
+           │ short_code=? │
+           └──────┬───────┘
+                  │
+          ┌───────┴───────┐
+          │               │
+        JÁ EXISTE     NÃO EXISTE
+          │               │
+          ▼               ▼
+       (Retry)      ✓ RETORNA
+       (i++)       (abc123)
+          │
+         (volta à iteração)
+```
+
+---
+
+## Estrutura de Dados no Banco
+
+```
+SHORTENED_URLS TABLE
+┌────────────────────────────────────────────────────────┐
+│ Campo          │ Tipo        │ Índice  │ Notas          │
+├────────────────────────────────────────────────────────┤
+│ id             │ BIGINT      │ PRIMARY │ Auto-increment │
+│ short_code     │ VARCHAR(10) │ UNIQUE  │ "abc123"       │
+│ original_url   │ VARCHAR(2K) │ -       │ URL longa      │
+│ created_at     │ DATETIME    │ INDEX   │ Automático     │
+│ updated_at     │ DATETIME    │ -       │ Automático     │
+│ click_count    │ INTEGER     │ -       │ Início: 0      │
+│ last_accessed  │ DATETIME    │ -       │ NULL init      │
+└────────────────────────────────────────────────────────┘
+
+EXAMPLE ROW:
+┌──┬─────────┬─────────────────────┬──────────────┬──────────────┬────────┬──────────────┐
+│1 │ abc123  │ https://example.com │ 2024-03-08..│ 2024-03-08..│ 42     │ 2024-03-08..│
+└──┴─────────┴─────────────────────┴──────────────┴──────────────┴────────┴──────────────┘
+```
+
+---
+
+## Capacidade do Sistema
+
+```
+Base62 Combinations:
+
+┌─────────────────────────────────────────┐
+│ Comprimento: 6 caracteres               │
+│ Charset: 0-9, a-z, A-Z (62 total)      │
+└─────────────────────────────────────────┘
+
+Cálculo:
+    62^6 = 56,800,235,584 combinações possíveis
+           (56.8 BILHÕES)
+
+Utilização Segura:
+    50% ocupação = 28,400,117,792 URLs
+    (28.4 BILHÕES)
+
+Limite de Colisão Desprezível:
+    Até 100 milhões de URLs
+    Probabilidade colisão < 0.001%
+
+Resumo:
+┌──────────────────────────────┐
+│ Seguro até:   100 MILHÕES    │
+│ Prático até:  1 BILHÃO       │
+│ Teórico:      56.8 BILHÕES   │
+└──────────────────────────────┘
+```
+
+---
+
+## Matriz de Decisão: H2 vs Alternativas
+
+```
+┌────────────────┬────┬──────┬────────┬────────┐
+│ Critério       │ H2 │ PgSQL│ Mongo  │ Memory │
+├────────────────┼────┼──────┼────────┼────────┤
+│ Setup          │ ✓✓ │ ✗    │ ✗      │ ✓      │
+│ Config         │ ✓✓ │ ✗    │ ✗      │ ✓✓     │
+│ Persistência   │ ✓✓ │ ✓✓   │ ✓✓     │ ✗      │
+│ Escalabilidade │ ✓  │ ✓✓✓  │ ✓✓✓    │ ✗      │
+│ Índices        │ ✓✓ │ ✓✓✓  │ ✓✓     │ ✓      │
+│ ACID           │ ✓✓ │ ✓✓✓  │ ✓      │ ✓✓     │
+│ Já no projeto  │ ✓✓ │ ✗    │ ✗      │ -      │
+│ Console Web    │ ✓✓ │ ✗    │ ✗      │ -      │
+│ Custo          │ $0 │ $0   │ $0     │ $0     │
+│ Complexidade   │ ✓  │ ✗    │ ✗      │ ✓✓     │
+│ Produção       │ ✓  │ ✓✓✓  │ ✓✓✓    │ ✗      │
+│ Desenvolvimento│ ✓✓ │ ✓    │ ✓      │ ✓      │
+├────────────────┼────┼──────┼────────┼────────┤
+│ SCORE          │ 21 │ 18   │ 17     │ 10     │
+│ RECOMENDAÇÃO   │✓✓✓ │ ✗    │ ✗      │ ✓      │
+│                │USAR│DEPOIS│DEPOIS  │TESTES  │
+└────────────────┴────┴──────┴────────┴────────┘
+```
+
+---
+
+## Ciclo de Vida de uma URL Encurtada
+
+```
+ESTADO: Nova URL
+┌─────────────────────────────────┐
+│ Criação                         │
+│                                 │
+│ POST /v1/urls/              │
+│ → short_code gerado         │
+│ → original_url armazenado   │
+│ → click_count = 0           │
+│ → created_at = NOW()        │
+└────────┬────────────────────────┘
+         │
+         ▼
+ESTADO: Ativa
+┌─────────────────────────────────┐
+│ Uso Normal                      │
+│                                 │
+│ GET /{shortCode}                │
+│ → Valida existence              │
+│ → Incrementa click_count        │
+│ → Atualiza last_accessed        │
+│ → Redireciona                   │
+└────────┬────────────────────────┘
+         │
+    ┌────┴────────────────────────┐
+    │                             │
+    ▼                             ▼
+ESTADO: Com Atividade      ESTADO: Inativa
+┌──────────────────────┐  ┌─────────────────┐
+│ Após múltiplos       │  │ Sem atividade   │
+│ acessos              │  │ por tempo       │
+│                      │  │                 │
+│ GET /v1/urls/{code}/stats │  │ Candidata para  │
+│ → Mostra stats       │  │ limpeza         │
+│ → click_count > 0    │  │                 │
+│                      │  │ (futuro)        │
+└──────────────────────┘  └─────────────────┘
+         │                        │
+         └────────┬───────────────┘
+                  │
+                  ▼
+        ESTADO: Deleted
+       ┌──────────────────┐
+       │ Remoção Manual   │
+       │                  │
+       │ DELETE /...      │
+       │ → Remove do banco│
+       │ → 404 em acessos│
+       │                  │
+       └──────────────────┘
+```
+
+---
+
+## Performance Esperada
+
+```
+OPERAÇÕES POR SEGUNDO
+
+Criar URL
+├─ Validação: 0.1ms
+├─ Query (existe?): 5ms
+├─ Geração ID: 1ms
+├─ Insert: 10ms
+├─ Resposta: 33ms
+├─ Total: ~50ms
+└─ Taxa: ~20 URLs/seg
+
+Redirecionar
+├─ Busca: 5ms
+├─ Incremento: 10ms
+├─ Response: 5ms
+├─ Total: ~20ms
+└─ Taxa: ~50 acessos/seg
+
+Obter Stats
+├─ Query: 10ms
+├─ Resposta: 2ms
+├─ Total: ~12ms
+└─ Taxa: ~83 stats/seg
+
+┌─────────────────────────────────┐
+│ THROUGHPUT TOTAL: ~150 ops/seg  │
+│ (com 100% em memória H2)        │
+└─────────────────────────────────┘
+
+Com PostgreSQL + Redis:
+└─ ~1000+ ops/seg
+```
+
+---
+
+## Próxima Evolução: Escalabilidade
+
+```
+Fase 1: Atual (H2)
+└─ Até ~100k URLs
+└─ Single instance
+└─ Arquivo local
+
+         ▼ (scale needed)
+
+Fase 2: PostgreSQL
+├─ Até ~10M URLs
+├─ Connection pooling
+├─ Backup/Replication
+└─ Single region
+
+         ▼ (multi-region)
+
+Fase 3: Cache Layer (Redis)
+├─ Short code → URL cache
+├─ Millões de ops/seg
+├─ 99.9% hit rate
+└─ Multi-region
+
+         ▼ (analytics)
+
+Fase 4: Analytics (Elasticsearch)
+├─ Geolocation tracking
+├─ Device analytics
+├─ Time-based queries
+└─ Dashboard real-time
+```
+
+
